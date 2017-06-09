@@ -1,0 +1,17 @@
+### path where "INutils" library is found
+LIB_DIR = ./c/INutils
+
+### compilers and options
+CC = gcc
+COPTS = -g -Wall -fPIC  -O0
+CXX = g++
+CXXOPTS = -g -Wall -fPIC  -O0
+
+#CC = pgcc
+#COPTS = -fPIC -g -Mbounds
+#CXX = pgc++
+#CXXOPTS = -fPIC -g -Mbounds
+
+### debug level
+DEBUG = -D   _DEBUG_
+
