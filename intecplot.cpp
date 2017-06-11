@@ -945,11 +945,17 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
             printf(" --- Found comment (inside Zone component) \n");
 #endif
             ++iline;
+
             // we will not be parsing this line
             iparse_line = 0;
             // store comment in strings
             buf[ strlen(buf) ] = '\n';
             strings[ iline ] = buf;
+#ifdef _DEBUG_
+            printf(" i Added to strings line %ld \n", iline );
+#endif
+            // show the line
+            printf(" [%ld]  %s", iline, buf );
          } else {
 #ifdef _DEBUG_
             printf(" --- Found component (at _or_ after Zone component)\n");
@@ -967,7 +973,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
 #ifdef _DEBUG_
          printf(" --- The line is part of the Zone component \n");
 #endif
-        iparse_line = 1;
+         iparse_line = 1;
       }
 
       // parse the line only if we are still parsing the current zone field
@@ -991,10 +997,12 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
                // rewind this line
                iret = fseek( fp, ipos, SEEK_SET );
                if( iret != 0 ) {
-                  printf(" e Error seeking to proper parsing position: %ld \n", ipos);
+                  printf(" e Error seeking to parsing position: %ld \n", ipos);
                   free( buf );
                   return(3);
                }
+               // retract line-number as the line will be re-read
+               --iline;
 
                // set the data position for this zone
                zone->SetDataPositionInFile( ipos );
