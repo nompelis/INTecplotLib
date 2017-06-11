@@ -57,6 +57,16 @@ inTec_Zone::~inTec_Zone( )
    printf(" i Zone object deconstructed\n");
 #endif
 
+#ifdef _DEBUG_
+   printf(" i Keywords in zone (%ld) \n", keywords.size());
+   printf("   Index  Keyword=String \n");
+   std::map< std::string, std::string > :: iterator im;
+   int i=0;
+   for( im = keywords.begin(); im != keywords.end(); ++im ) {
+      printf("   %d  ", i++ );
+      printf("   [%s] = %s\n", (*im).first.c_str(), (*im).second.c_str() );
+   }
+#endif
    keywords.clear();
 }
 
@@ -110,6 +120,26 @@ int inTec_Zone::SetPositionInFile( long ipos_ )
    }
 }
 
+long inTec_Zone::GetDataPositionInFile( void ) const
+{
+   return( ipos_data );
+}
+
+int inTec_Zone::SetDataPositionInFile( long ipos_data_ )
+{
+   // reject reseting of position if it is already set
+   if( ipos_data != 0 ) {
+      return(1);
+   } else {   // this is for when a zone is created but not read from a file
+      ipos_data = ipos_data_;
+#ifdef _DEBUG_
+      printf(" --- Zone's data position at: %ld \n", ipos_data );
+#endif
+      return(0);
+   }
+}
+
+
 int inTec_Zone::ParseKeywords( char *buf )
 {
 #ifdef _DEBUG_
@@ -133,11 +163,12 @@ if(itime < 2) return(1);
    // copy line to buffer and add termination character
    memcpy( data, buf, isize );
    data[isize] = '\0';
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
    printf("DATA: %s\n",data);
 #endif
 
    // keep parsing for keywords and values
+   int np=0;
    int iquote=0, ikey=0, ierror=0, iparse=0;
    char *s=data, *es=NULL;
    size_t n=0;
@@ -210,9 +241,10 @@ if(itime < 2) return(1);
                if( iquote == 1 ) {
                   // close the quote
                   iquote = 0;
-                  // indicate that we can parse
-                  ikey = 0;
-                  iparse = 1;
+             //   // indicate that we can parse
+             //   ikey = 0;
+             //   iparse = 1;
+                  // let the next encounter terminate the parsing
                } else {
                   ierror = 1; printf("This is in error! (4b) (stray quote) ");
                }
@@ -247,6 +279,16 @@ if(itime < 2) return(1);
       // anything else
       {
          if( ikey == 0 ) {
+            // check whether we are in a line of data
+            if( CheckCharForNum( data[n] ) == 1 ) {
+               // terminate parsing immediately; the zone header must be done
+               free( data );
+#ifdef _DEBUG_
+               printf(" (numerical string) \n");
+#endif
+               return( -100 );
+            }
+
             // encountered keyword
             ikey = 1;
 #ifdef _DEBUG_
@@ -264,9 +306,12 @@ if(itime < 2) return(1);
       // provide some output
       if( iparse == 1 ) {
          printf(" (parsing now)");
-         data[n] = '\0';//HACK HERE
+         data[n+0] = '\0';//HACK HERE
 
-         HandleKeyword( s );//HACK HERE
+         int iret = HandleKeyword( s );
+         // allow for the possibility of dealiing with this differently...
+         if( iret == 0 ) ++np;
+
          iparse = 0;
       }
 
@@ -276,12 +321,14 @@ if(itime < 2) return(1);
 #endif
    }
 
-
-
    // drop duplicate buffer
    free( data );
 
-   return(0);
+   if( ierror == 0 ) {
+      return( np );
+   } else {
+      return( -10*ierror );
+   }
 }
 
 
@@ -290,12 +337,152 @@ int inTec_Zone::HandleKeyword( char *buf )
 #ifdef _DEBUG_
    printf("\n i Handling keyword \n");
 #endif
-
+#ifdef _DEBUG2_
    printf(" --- keyword -->|%s|<-- \n", buf );
+#endif
 
+   // shift start of buffer to beginning of the keyword
+   char *s = buf;
+   while( s[0] == ' ' || s[0] == ',' ) s++;
+#ifdef _DEBUG_
+   printf(" --- start keyword -->|%s|<-- \n", s );
+#endif
 
+   // size to equal sign
+   size_t i=0,key_size=0;
+   while( s[ i ] != '=' ) {
+      // nullify spaces as you go
+      if( s[ i ] != ' ' ) {
+         ++key_size;
+      } else {
+         s[key_size] = '\0';
+      }
+      ++i;
+   }
+#ifdef _DEBUG_
+   printf(" --- Equal size at character %ld \n", i );
+#endif
+   s[i] = '\0';
+#ifdef _DEBUG_
+   printf(" --- Clean keyword: --->|%s|<--- \n", s );
+#endif
 
-   return(0);
+   // need to "shift" past the equal sign and to the beginning of the payload
+   char *p = &( s[ i+1] );
+   while( p[0] == ' ' && p[0] != '\0' ) p++;
+#ifdef _DEBUG_
+   printf(" --- Payload: --->|%s|<--- \n", p );
+#endif
+
+   // trials to match keyword
+   int iret=1;
+   if( key_size == 1 ) {
+      if( strncasecmp( s, "T", 1 ) == 0 ) {
+         keywords["T"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "I", 1 ) == 0 ) {
+         keywords["I"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "J", 1 ) == 0 ) {
+         keywords["J"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "K", 1 ) == 0 ) {
+         keywords["K"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "E", 1 ) == 0 ) {   // old keyword
+         keywords["E"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "N", 1 ) == 0 ) {   // old keyword
+         keywords["N"] = p;
+         iret = 0;
+      }
+   }
+
+   if( key_size == 2 ) {
+      if( strncasecmp( s, "ET", 2 ) == 0 ) {   // old keyword
+         keywords["ET"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "DT", 2 ) == 0 ) {
+         keywords["DT"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "NV", 2 ) == 0 ) {
+         keywords["NV"] = p;
+         iret = 0;
+      }
+   }
+
+   if( key_size == 4 ) {
+      if( strncasecmp( s, "NODES", 5 ) == 0 ) {
+         keywords["NODES"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "FACES", 5 ) == 0 ) {
+         keywords["FACES"] = p;
+         iret = 0;
+      }
+   }
+
+   if( key_size == 11 ) {
+      if( strncasecmp( s, "DATAPACKING", 11 ) == 0 ) {
+         keywords["DATAPACKING"] = p;
+         iret = 0;
+      }
+
+      if( strncasecmp( s, "VARLOCATION", 11 ) == 0 ) {
+         keywords["VARLOCATION"] = p;
+         iret = 0;
+      }
+   }
+
+   return( iret );
+}
+
+int inTec_Zone::CheckCharForNum( char c ) const
+{
+   if( c == '0' ) {
+      return(1);
+   } else if( c == '1' ) {
+      return(1);
+   } else if( c == '2' ) {
+      return(1);
+   } else if( c == '3' ) {
+      return(1);
+   } else if( c == '4' ) {
+      return(1);
+   } else if( c == '5' ) {
+      return(1);
+   } else if( c == '6' ) {
+      return(1);
+   } else if( c == '7' ) {
+      return(1);
+   } else if( c == '8' ) {
+      return(1);
+   } else if( c == '9' ) {
+      return(1);
+   } else if( c == '-' ) {
+      return(1);
+   } else if( c == '+' ) {
+      return(1);
+   } else if( c == '.' ) {
+      return(1);
+   } else {
+      return(0);
+   }
 }
 
 
@@ -794,9 +981,11 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
 #endif
             int np = zone->ParseKeywords( buf );
 #ifdef _DEBUG_
-            printf(" --- Parsed %d item(s) \n",np);
+            if( np >= 0 ) printf(" --- Parsed %d item(s) \n",np);
 #endif
-            if( np == 0 ) {
+            if( np == -100 ) {     // special return value!
+               // we have parsed through possibly multiple "zone" lines...
+               // ...and encountered data
                igot_descr = 1;
 
                // rewind this line
@@ -807,11 +996,21 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
                   return(3);
                }
 
+               // set the data position for this zone
+               zone->SetDataPositionInFile( ipos );
+               // (here we must put the zone in data-reading particular state)
+
+            } else if( np < 0 ) {
+               // an error in parsing keywords was trapped
+               // (This section will have to be changed based on how we want to
+               // handle bad keywords, etc.)
             }
          } else {
 #ifdef _DEBUG_
             printf(" --- Collecting Zone data \n");
 #endif
+            // push the buffer to the zone for data extraction
+            // (we must have set the zone to a data-reading state earlier)
 
          }
 

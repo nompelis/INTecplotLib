@@ -28,6 +28,8 @@ class inTec_Zone {
 
    long GetPositionInFile( void ) const;
    int SetPositionInFile( long ipos_ );
+   long GetDataPositionInFile( void ) const;
+   int SetDataPositionInFile( long ipos_data_ );
    int ParseKeywords( char *buf );
    int HandleKeyword( char *buf );
 
@@ -39,6 +41,7 @@ class inTec_Zone {
    long ipos,ipos_data;
    std::map< std::string, std::string > keywords;
 
+   int CheckCharForNum( char c ) const;
 };
 
 
