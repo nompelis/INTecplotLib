@@ -44,6 +44,7 @@ inTec_Zone::inTec_Zone( inTec_File* file_ )
 #ifdef _DEBUG_
    printf(" i Zone object instantiated\n");
 #endif
+   istate = 0;
    ipos = 0;
    ipos_data = 0;
    InitKeywords();
@@ -98,9 +99,6 @@ void inTec_Zone::InitKeywords()
 // keywords["PASSIVEVARLIST"] = "";
 // keywords["AUXDATA"] = "";
 // keywords[""] = "";
-
-
-
 }
 
 
@@ -139,6 +137,15 @@ int inTec_Zone::SetDataPositionInFile( long ipos_data_ )
    }
 }
 
+int inTec_Zone::SetState_Reading( void )
+{
+   if( istate == 0 ) {
+      istate = 1;
+      return(0);
+   }
+
+   return(1);
+}
 
 int inTec_Zone::ParseKeywords( char *buf )
 {
@@ -483,6 +490,20 @@ int inTec_Zone::CheckCharForNum( char c ) const
    } else {
       return(0);
    }
+}
+
+int inTec_Zone::ParseData( char *buf )
+{
+#ifdef _DEBUG_
+   printf(" i Parsing zone data \n");
+#endif
+#ifdef _DEBUG_
+   printf(" STRING: --->|%s|<---\n", buf );
+#endif
+
+
+
+   return(0);
 }
 
 
@@ -908,7 +929,7 @@ int inTec_File::ParseComponent_Zone()
    size_t ibuf_size=0;
 
    int idone_zone = 0;   // flag for present zone component termination
-   int igot_descr = 0;   // flag for whether we have a description of the zone
+   int igot_head = 0;    // flag for whether we have a description of the zone
    while( !feof( fp ) && idone_zone <= 1 ) {
       int ic;
 
@@ -923,6 +944,8 @@ int inTec_File::ParseComponent_Zone()
       // read a line of data; get count of bytes read
       ic = inUtils_ReadTextline( &ibuf_size, &buf, fp );
       // check error code
+
+      ++iline;
 
       // sanitize the line
       inUtils_TrimLeadingSpaceTextline( buf );
@@ -939,20 +962,19 @@ int inTec_File::ParseComponent_Zone()
 printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
       // check if we have jumped to a new component under certain conditions...
       if( iret > 0 ) {             // we found a component
+
          // only allow "stray" comment components to pass through
          if( iret == Comment ) {
 #ifdef _DEBUG_
             printf(" --- Found comment (inside Zone component) \n");
 #endif
-            ++iline;
-
             // we will not be parsing this line
             iparse_line = 0;
             // store comment in strings
             buf[ strlen(buf) ] = '\n';
             strings[ iline ] = buf;
 #ifdef _DEBUG_
-            printf(" i Added to strings line %ld \n", iline );
+            printf(" i Added comment to strings line %ld \n", iline );
 #endif
             // show the line
             printf(" [%ld]  %s", iline, buf );
@@ -978,21 +1000,25 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
 
       // parse the line only if we are still parsing the current zone field
       if( iparse_line == 1 ) {
-         ++iline;
-
-///// we need to keep parsing pieces as they cone
-         if( igot_descr == 0 ) {
+         if( igot_head == 0 ) {
 #ifdef _DEBUG_
             printf(" --- Looking for Zone keywords \n");
 #endif
             int np = zone->ParseKeywords( buf );
+            if( np >= 0 ) {
 #ifdef _DEBUG_
-            if( np >= 0 ) printf(" --- Parsed %d item(s) \n",np);
+               printf(" --- Parsed %d item(s) \n",np);
 #endif
+               buf[ strlen(buf) ] = '\n';
+               strings[ iline ] = buf;
+#ifdef _DEBUG2_
+               printf(" i Added to strings line %ld \n", iline );
+#endif
+            }
             if( np == -100 ) {     // special return value!
                // we have parsed through possibly multiple "zone" lines...
                // ...and encountered data
-               igot_descr = 1;
+               igot_head = 1;
 
                // rewind this line
                iret = fseek( fp, ipos, SEEK_SET );
@@ -1007,22 +1033,28 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
                // set the data position for this zone
                zone->SetDataPositionInFile( ipos );
                // (here we must put the zone in data-reading particular state)
+               if( zone->SetState_Reading() != 0 ) {
+                  // respond to the possibility of the zone being mis-used...
+
+               }
 
             } else if( np < 0 ) {
                // an error in parsing keywords was trapped
                // (This section will have to be changed based on how we want to
                // handle bad keywords, etc.)
             }
-         } else {
+         } else { // we have parsed the header completely; now parsing data
 #ifdef _DEBUG_
             printf(" --- Collecting Zone data \n");
 #endif
             // push the buffer to the zone for data extraction
             // (we must have set the zone to a data-reading state earlier)
+            zone->ParseData( buf );
+            // possibly respond to errors returned by the zone...
 
          }
 
-      }
+      } // (end of iparse_line=1)
    }
 
    // drop the buffer
@@ -1034,7 +1066,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
 printf("HACK dropping the zone object\n");
 #endif
 delete zone; //HACK
-printf("EXITING....\n");exit(0);//HACK
+//printf("EXITING....\n");exit(0);//HACK
 
 #ifdef _DEBUG_
    printf(" i *** Skipping parsing of ZONE component *** \n");

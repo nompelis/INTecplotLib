@@ -32,9 +32,12 @@ class inTec_Zone {
    int SetDataPositionInFile( long ipos_data_ );
    int ParseKeywords( char *buf );
    int HandleKeyword( char *buf );
+   int SetState_Reading( void );
+   int ParseData( char *buf );
 
  protected:
    void InitKeywords();
+   int istate;       
 
  private:
    inTec_File *file;
