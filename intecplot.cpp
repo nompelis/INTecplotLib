@@ -47,9 +47,19 @@ inTec_Zone::inTec_Zone( inTec_File* file_ )
    istate = 0;
    ipos = 0;
    ipos_data = 0;
+
+   iordered = -1;
+   ietype = -1;
+   im = 0;
+   jm = 0;
+   km = 0;
+   nodes = 0;
+   elems = 0;
+
    InitKeywords();
 
    file = file_;
+   num_var = 0;
 }
 
 inTec_Zone::~inTec_Zone( )
@@ -61,14 +71,22 @@ inTec_Zone::~inTec_Zone( )
 #ifdef _DEBUG_
    printf(" i Keywords in zone (%ld) \n", keywords.size());
    printf("   Index  Keyword=String \n");
-   std::map< std::string, std::string > :: iterator im;
+   std::map< std::string, std::string > :: iterator imap;
    int i=0;
-   for( im = keywords.begin(); im != keywords.end(); ++im ) {
+   for( imap = keywords.begin(); imap != keywords.end(); ++imap ) {
       printf("   %d  ", i++ );
-      printf("   [%s] = %s\n", (*im).first.c_str(), (*im).second.c_str() );
+      printf("   [%s] = %s\n", (*imap).first.c_str(), (*imap).second.c_str() );
    }
 #endif
    keywords.clear();
+
+#ifdef _DEBUG_
+   printf("   Other data in zone \n");
+   printf("    - Nodes: %ld \n", nodes);
+   printf("    - Elements: %ld \n", elems);
+   printf("    - im,jm,kn: %ld, %ld, %ld \n", im,jm,km);
+   printf("    - Mumber of variables: %d \n", num_var);
+#endif
 }
 
 void inTec_Zone::InitKeywords()
@@ -139,12 +157,18 @@ int inTec_Zone::SetDataPositionInFile( long ipos_data_ )
 
 int inTec_Zone::SetState_Reading( void )
 {
-   if( istate == 0 ) {
-      istate = 1;
-      return(0);
+   if( istate != 0 ) {
+      return(1);
    }
 
-   return(1);
+
+
+
+
+
+   istate = 1;
+
+   return(0);
 }
 
 int inTec_Zone::ParseKeywords( char *buf )
@@ -152,13 +176,6 @@ int inTec_Zone::ParseKeywords( char *buf )
 #ifdef _DEBUG_
    printf(" i Parsing zone keywords \n");
 #endif
-
-/******* this is to make it seem like it parsed a number of items
-static int itime = 0;
-++itime;
-if(itime < 2) return(1);
-*/
-
    size_t isize=0;
    while( buf[isize] != '\0' && buf[isize] != '\n' ) ++isize;
 
@@ -371,7 +388,7 @@ int inTec_Zone::HandleKeyword( char *buf )
 #endif
    s[i] = '\0';
 #ifdef _DEBUG_
-   printf(" --- Clean keyword: --->|%s|<--- \n", s );
+   printf(" --- Cleaned keyword: --->|%s|<--- \n", s );
 #endif
 
    // need to "shift" past the equal sign and to the beginning of the payload
@@ -456,6 +473,9 @@ int inTec_Zone::HandleKeyword( char *buf )
       }
    }
 
+   // use whatever data has been collected to manage the internal state
+   if( iret == 0 ) ManageInternals();
+
    return( iret );
 }
 
@@ -492,6 +512,80 @@ int inTec_Zone::CheckCharForNum( char c ) const
    }
 }
 
+void inTec_Zone::ManageInternals( void )
+{
+#ifdef _DEBUG_
+   printf(" i Inside ManageInternals() \n");
+#endif
+
+   num_var = file->GetNumVariables();
+
+//HERE
+   char *string=NULL,*string2=NULL;
+   size_t is;
+   int i=0;
+   std::map< std::string, std::string > :: iterator imap;
+   for( imap = keywords.begin(); imap != keywords.end(); ++imap ) {
+      printf("   %d  ", i++ );
+      string = (char *) (*imap).first.c_str();
+      printf("   %s  ", string );
+      string2 = (char *) (*imap).second.c_str();
+      printf("   \"%s\"\n", string2 );
+
+      // keywords by size
+      is = strlen( string );
+
+      if( is == 1 ) {
+         if( strncasecmp( string, "N", 1 ) == 0 ) {
+            nodes = (unsigned long) atol( string2 );
+         }
+
+         if( strncasecmp( string, "E", 1 ) == 0 ) {
+            elems = (unsigned long) atol( string2 );
+         }
+
+         if( strncasecmp( string, "I", 1 ) == 0 ) {
+            im = (unsigned long) atol( string2 );
+         }
+         if( strncasecmp( string, "J", 1 ) == 0 ) {
+            jm = (unsigned long) atol( string2 );
+         }
+         if( strncasecmp( string, "K", 1 ) == 0 ) {
+            km = (unsigned long) atol( string2 );
+         }
+         if( strncasecmp( string, "T", 1 ) == 0 ) {
+            // will deal with this later...
+         }
+      }
+
+
+      if( is == 2 ) {
+         if( strncasecmp( string, "DT", 2 ) == 0 ) {
+            // will do this later
+         }
+
+      }
+
+
+      if( is == 11 ) {
+         if( strncasecmp( string, "VARLOCATION", 11 ) == 0 ) {
+            // will do this later
+// can be like the following:
+// VARLOCATION=([3-7,10]=CELLCENTERED, [11-12]=CELLCENTERED)
+// need to write a special parser method to set variables are nodal or not, etc
+
+         }
+
+      }
+
+
+
+   }
+#ifdef _DEBUG_
+   printf(" i Exiting ManageInternals() \n");
+#endif
+}
+
 int inTec_Zone::ParseData( char *buf )
 {
 #ifdef _DEBUG_
@@ -501,7 +595,26 @@ int inTec_Zone::ParseData( char *buf )
    printf(" STRING: --->|%s|<---\n", buf );
 #endif
 
+   // clean-up all fortran double-precision formatting
+   size_t i=0;
+   while( buf[i] != '\0' && buf[i] != '\n' ) {
+      if( buf[i] == 'd' || buf[i] == 'D' ) buf[i] = 'e';
+   // if( buf[i] == ',' ) buf[i] = ' ';
+      ++i;
+   }
 
+   // parse segments separated by spaces or commans
+   char *string,*token,*sr;
+   for( i=0, string = buf; ; ++i, string = NULL ) {
+      token = strtok_r( string, " ,", &sr );
+      if( token == NULL ) break;
+#ifdef _DEBUG_
+      printf(" --- token: --->|%s|<--- \n", token );
+#endif
+
+
+
+   }
 
    return(0);
 }
@@ -602,6 +715,11 @@ FILE* inTec_File::GetFP( void ) const
    return( fp );
 }
 
+int inTec_File::GetNumVariables( void ) const
+{
+   int i = variables.size();
+   return( i );
+}
 
 int inTec_File::Parse()
 {
@@ -1031,7 +1149,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
                --iline;
 
                // set the data position for this zone
-               zone->SetDataPositionInFile( ipos );
+               iret = zone->SetDataPositionInFile( ipos );
                // (here we must put the zone in data-reading particular state)
                if( zone->SetState_Reading() != 0 ) {
                   // respond to the possibility of the zone being mis-used...
@@ -1042,6 +1160,9 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
                // an error in parsing keywords was trapped
                // (This section will have to be changed based on how we want to
                // handle bad keywords, etc.)
+               printf(" e Error parsing zone keywords \n");
+               free( buf );
+               return(4);
             }
          } else { // we have parsed the header completely; now parsing data
 #ifdef _DEBUG_
@@ -1049,8 +1170,13 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
 #endif
             // push the buffer to the zone for data extraction
             // (we must have set the zone to a data-reading state earlier)
-            zone->ParseData( buf );
+            iret = zone->ParseData( buf );
             // possibly respond to errors returned by the zone...
+            if( iret < 0 ) {
+               printf(" e Error parsing zone data \n");
+               free( buf );
+               return(5);
+            }
 
          }
 
@@ -1066,7 +1192,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
 printf("HACK dropping the zone object\n");
 #endif
 delete zone; //HACK
-//printf("EXITING....\n");exit(0);//HACK
+  printf("EXITING....\n");exit(0);//HACK
 
 #ifdef _DEBUG_
    printf(" i *** Skipping parsing of ZONE component *** \n");

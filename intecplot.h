@@ -38,6 +38,10 @@ class inTec_Zone {
  protected:
    void InitKeywords();
    int istate;       
+   int iordered,ietype;
+   int num_var;
+   unsigned long im,jm,km,nodes,elems;
+   std::map< int, int > ivar_loc;
 
  private:
    inTec_File *file;
@@ -45,6 +49,7 @@ class inTec_Zone {
    std::map< std::string, std::string > keywords;
 
    int CheckCharForNum( char c ) const;
+   void ManageInternals( void );
 };
 
 
@@ -63,6 +68,7 @@ class inTec_File {
 
    int GetState( void ) const;
    FILE* GetFP( void ) const;
+   int GetNumVariables( void ) const;
 
  protected:
    int ParseLoop();
