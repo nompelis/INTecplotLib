@@ -37,11 +37,16 @@ class inTec_Zone {
 
  protected:
    void InitKeywords();
-   int istate;       
-   int iordered,ietype;
-   int num_var;
+   int istate;
+   char *tkey;
+   int iordered,ietype,idatapack;
+   int num_var, parent_zone, nv;
    unsigned long im,jm,km,nodes,elems;
    std::map< int, int > ivar_loc;
+
+   // old-style variables
+   unsigned long iold_n, iold_e;
+   int iold_et, iold_f;
 
  private:
    inTec_File *file;
@@ -49,7 +54,14 @@ class inTec_Zone {
    std::map< std::string, std::string > keywords;
 
    int CheckCharForNum( char c ) const;
-   void ManageInternals( void );
+   int ManageInternals( void );
+   int HandleKeyword_T( const char *string );
+   int HandleKeyword_ET( const char *string );
+   int HandleKeyword_Varlocation( const char *string );
+   int HandleKeyword_Datapacking( const char *string );
+   int HandleKeyword_Zonetype( const char *string );
+   int HandleKeyword_Varsharelist( const char *string );
+   int ConsistencyCheck( void );
 };
 
 
