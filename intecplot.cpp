@@ -236,7 +236,7 @@ int inTec_Zone::ParseKeywords( char *buf )
 
    // keep parsing for keywords and values
    int np=0;
-   int iquote=0, ikey=0, ierror=0, iparse=0;
+   int ipar=0, ibra=0, iquote=0, ikey=0, ierror=0, iparse=0;
    char *s=data, *es=NULL;
    size_t n=0;
    while( n <= isize ) {
@@ -254,8 +254,8 @@ int inTec_Zone::ParseKeywords( char *buf )
          } else if( ikey == 2 ) {
             if( data[n] == ',' ) { ierror = 1;printf("This is in error! (1b)");}
          } else if( ikey == 3 ) {
-            if( iquote == 1 ) {
-               // we continue parsing because the quote is open
+            if( iquote == 1 || ibra == 1 || ipar == 1 ) {
+               // we continue parsing because the quote/bracket/paren. is open
             } else {
                // this terminates the keyword
                ikey = 0;
@@ -280,8 +280,11 @@ int inTec_Zone::ParseKeywords( char *buf )
          } else if( ikey == 2 ) {
             ierror = 1; printf("This is in error! (2b)");
          } else if( ikey == 3 ) {
-            if( iquote == 1 ) {
-               // we continue to swallow characters
+            if( iquote == 1 || ibra == 1 || ipar == 1 ) {
+               // we continue parsing because the quote/bracket/paren. is open
+#ifdef _DEBUG_
+               printf(" (equal sign in key=3) ");
+#endif
             } else {
                ierror = 1; printf("This is in error! (3)");
             }
@@ -322,8 +325,8 @@ int inTec_Zone::ParseKeywords( char *buf )
       // newline or null
       if( data[n] == '\n' || data[n] == '\0' ) {
          if( ikey == 3 ) {
-            if( iquote == 1 ) {
-               ierror = 1;printf("This is in error! (5) (unterminated quote) ");
+            if( iquote == 1 || ibra == 1 || ipar == 1 ) {
+               ierror = 1;printf("This is in error! (5) (unterminated quote/bracket/paren.) ");
             } else {
                ikey = 0;
                iparse = 1;
@@ -342,6 +345,82 @@ int inTec_Zone::ParseKeywords( char *buf )
 #endif
          }
       } else 
+
+      // open bracket
+      if( data[n] == '[' ) {
+         if( ikey < 2 ) {
+            ierror = 1; printf("This is in error! (6) (stray bracket) ");
+         } else if( ikey == 2 ) {
+            // entering data section of this keyword...
+            ikey = 3;
+            // ...with an open bracket
+            ibra = 1;
+#ifdef _DEBUG_
+            printf(" (start data of keyword with bracket) ");
+#endif
+         } else {
+            // simply open bracket
+            ibra = 1;
+#ifdef _DEBUG_
+            printf(" (open bracket) ");
+#endif
+         }
+      } else 
+
+      // close bracket
+      if( data[n] == ']' ) {
+         if( ikey < 3 ) {
+            ierror = 1; printf("This is in error! (7a) (stray bracket) ");
+         } else {
+            if( ibra != 1 ) {
+               ierror = 1; printf("This is in error! (7b) (stray bracket) ");
+            } else {
+               // simply close bracket
+               ibra = 0;
+#ifdef _DEBUG_
+               printf(" (close bracket) ");
+#endif
+            }
+         }
+      } else
+
+      // open parenthesis
+      if( data[n] == '(' ) {
+         if( ikey < 2 ) {
+            ierror = 1; printf("This is in error! (8) (stray paren.) ");
+         } else if( ikey == 2 ) {
+            // entering data section of this keyword...
+            ikey = 3;
+            // ...with an open parenthesis
+            ipar = 1;
+#ifdef _DEBUG_
+            printf(" (start data of keyword with paren.) ");
+#endif
+         } else {
+            // simply open parenthesis
+            ipar = 1;
+#ifdef _DEBUG_
+            printf(" (open paren.) ");
+#endif
+         }
+      } else
+
+      // close parenthesis
+      if( data[n] == ')' ) {
+         if( ikey < 3 ) {
+            ierror = 1; printf("This is in error! (9) (stray paren.) ");
+         } else {
+            if( ipar != 1 ) {
+               ierror = 1; printf("This is in error! (9b) (stray paren.) ");
+            } else {
+               // simply close parenthesis
+               ipar = 0;
+#ifdef _DEBUG_
+               printf(" (close paren.) ");
+#endif
+            }
+         }
+      } else
 
       // anything else
       {
@@ -394,6 +473,9 @@ int inTec_Zone::ParseKeywords( char *buf )
    if( ierror == 0 ) {
       return( np );
    } else {
+#ifdef _DEBUG_
+      printf(" --- Error returned: %d \n", -10*ierror );
+#endif
       return( -10*ierror );
    }
 }
@@ -784,40 +866,190 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
 
 //HERE2
    // the case where variables are individualluy separated
+   int ierror=0;
    if( iret != 0 && is >= 15 ) {    // the check may be different...
-// can be like the following:
-// VARLOCATION=([3-7,10]=CELLCENTERED, [11-12]=CELLCENTERED)
-// need to write a special parser method to set variables are nodal or not, etc
 
-      if( s[0] == '(' ) {
+      std::map< int, int > itmp_loc;
+      std::map< int, int > :: iterator it;
+      for(int n=1;n<=num_var;++n) itmp_loc[n] = 1;
+
 #ifdef _DEBUG_
-         printf(" --- Parsing variable locations \n");
+     printf(" --- Parsing variable locations (nodal/cell-centered) \n");
+     printf(" --- Number of variables in zone( from file): %d \n", num_var);
+#endif
+      char *s,*sr;
+      char *token;
+      const char *delim;
+
+      // first pass is the parentheses and we assume it will not be seen again
+#ifdef _DEBUG2_
+     printf(" --- Searching for parentheses\n");
+#endif
+      delim = (const char *) "()";
+      token = strtok_r( buf, delim, &sr );
+      if( token == NULL ) {
+         // this is in error
+         printf("CANNOT HAVE NULL TOKEN HERE!!! FILL IN ERROR-TRAPPING.\n");
+         ierror = 1;
+      }
+#ifdef _DEBUG2_
+      printf(" --- Token in parentheses --->|%s|<---\n",token);
 #endif
 
-         char *s,*token,*sr,*delim;
+      int k;
+      for( k=0,s=token; ierror==0 ; s=NULL,++k ) {
+#ifdef _DEBUG2_
+         printf("LOOP START: ");
+         printf("S  -->|%s|<-- \n",s);
+#endif
+         // look for first delimiter (a group before an equal sign)
+         delim = (const char *) "= ";
+      // printf("DELIM1 -->|%s|<-- \n",delim);
+         token = strtok_r( s, delim, &sr );
+      // printf("TOKEN1 -->|%s|<-- \n",token);
+         // this is the proper termination condition
+         if( token == NULL ) break;
 
-         int k;
-         for( s=buf, k=0; ; s=NULL, ++k ) {
+         // look for variable numbers
+         char *s2=token,*sr2;
+         token = strtok_r( s2, "[]", &sr2 );
+      // printf("TOKEN+ -->|%s|<-- \n",token);
+         int kk;
+         for( kk=0,s2=token; ierror==0 ; s2=NULL,++kk ) {
+            token = strtok_r( s2, ",", &sr2 );
+            if( token == NULL ) break;
+      //    printf("TOKEN++ -->|%s|<-- \n", token);
 
-            delim = "[]";
+            // look for a minus sign and take action
+            int isign=0;
+            is=0;
+            while( token[is] != '\0' ) {
+               if( token[is] == '-' ) {
+                  isign = 1;         // indicate this is a range group
+                  token[is] = ' ';   // turn sign to a space for easy parsing
+               }
+               ++is;
+            }
+      //    printf("TOKEN++ changed as range/number -->|%s|<-- \n", token);
 
-            token = strtok_r( s, delim, &sr );
+            // parse the number range or variable number
+            if( isign == 1 ) {
+               int i1=-1,i2=-1;
+               is = sscanf( token, "%d %d", &i1,&i2);
+#ifdef _DEBUG_
+               printf(" --- Variable range: %d - %d \n", i1,i2);
+#endif
+               if( is != 2 ) {
+#ifdef _DEBUG_
+                  printf(" --- Failed parsing range! \n");
+#endif
+                  ierror = 2;
+                  break;
+               } else {
+                  if( i1 > num_var || i2 > num_var ||
+                      i1 == 0      || i2 == 0 ) {
+#ifdef _DEBUG_
+                     printf(" --- Variables out of range! \n");
+#endif
+                     ierror = 20;
+                     break;
+                  } else {
+                     for(int n=1;n<=num_var;++n)
+                        if( i1 <= n && n <= i2 ) itmp_loc[n] = 99;
+                  }
+               }
+            } else {
+               int i0=-1;
+               is = sscanf( token, "%d", &i0);
+#ifdef _DEBUG_
+               printf(" --- Variable: %d \n", i0);
+#endif
+               if( is != 1 ) {
+#ifdef _DEBUG_
+                  printf(" --- Failed parsing variable slot! \n");
+#endif
+                  ierror = 2;
+                  break;
+               } else {
+                  if( i0 > num_var || i0 == 0 ) {
+#ifdef _DEBUG_
+                     printf(" --- Variable out of range! \n");
+#endif
+                     ierror = 20;
+                     break;
+                  } else {
+                     itmp_loc[i0] = 99;
+                  }
+               }
+            }
 
-            printf("TOEKEN -->|%s|<-- \n",token);
 
+
+#ifdef _DEBUG2_
+            printf("Inner cycling... --------------------------------------\n");
+#endif
+         }
+         if( ierror != 0 ) break;
+
+         // look for second delimiter (a group before a comma)
+         s = NULL;
+         delim = (const char *) ",";
+      // printf("DELIM2 -->|%s|<-- \n",delim);
+         token = strtok_r( s, delim, &sr );
+         if( token == NULL ) {
+            ierror = 2;
+            break;
+         }
+      // printf("TOKEN2 -->|%s|<-- \n",token);
+
+         // skip the first few spaces if any
+         while( token[0] == ' ' || token[0] == '=' ) token++;
+      // printf("CLEAN TOKEN2 -->|%s|<-- \n",token);
+
+         // determine the "variable location" based on the second string
+         int iloc=0;    // this would eventually result in an error...
+         if( strlen( token ) >= 5 ) {
+            if( strncasecmp( token, "NODAL", 5 ) == 0 ) iloc = 1;
+         }
+         if( strlen( token ) >= 12 ) {
+            if( strncasecmp( token, "CELLCENTERED", 12 ) == 0 ) iloc = 2;
+         }
+         for( it= itmp_loc.begin(); it != itmp_loc.end(); ++it ) {
+            if( (*it).second == 99 ) (*it).second = iloc;
          }
 
-
-      // iret = 0;  // HACK
-
-
-
-      } else {
-#ifdef _DEBUG_
-         printf(" --- Problematic VARLOCATION line \n");
+#ifdef _DEBUG2_
+         printf("Outer cycling... -----------------------------------------\n");
 #endif
       }
+
+#ifdef _DEBUG2_
+      printf(" --- Variable locations (temporary) \n");
+      for( it= itmp_loc.begin(); it != itmp_loc.end(); ++it ) {
+         printf("      ==> var. %d location %d \n", (*it).first, (*it).second );
+         ivar_loc[ (*it).first ] = (*it).second;
+      }
+#endif
+
+      itmp_loc.clear();
    }
+
+if( ierror != 0 ) printf("ERROR REPORTED!!!!!!!!\n");
+
+
+#ifdef _DEBUG_
+///// we need to move this out of here...
+   printf(" --- Variable locations \n");
+   std::map< int, int > :: iterator it;
+   for( it= ivar_loc.begin(); it != ivar_loc.end(); ++it ) {
+      printf("      ==> var. %d location %d \n", (*it).first, (*it).second );
+   }
+#endif
+exit(1);
+
+#ifdef _DEBUG_
+// printf(" --- Problematic VARLOCATION line \n");
+#endif
 
    // drop the buffer
    free( buf );
@@ -977,6 +1209,7 @@ int inTec_Zone::ConsistencyCheck (void )
    int iret=0;
 
 #ifdef _DEBUG_
+   // display all stored keywords as they were found after sanitized parsing
    int i=0;
    const char *string=NULL,*string2=NULL;
    std::map< std::string, std::string > :: iterator imap;
@@ -989,18 +1222,37 @@ int inTec_Zone::ConsistencyCheck (void )
    }
 #endif
 
+   //
    // first check for old-style variables
+   // (possibly set a variable indicating that OLD switches are present)
+   //
 #ifdef _DEBUG_
    printf("iold_n: %ld \n", iold_n);
    printf("iold_e: %ld \n", iold_e);
    printf("iold_et: %d \n", iold_et);
 #endif
+   /// give precedence of old switches... (incomplete)
    if( iold_n > 0 ) nodes = iold_n;
    if( iold_e > 0 ) elems = iold_e;
+   if( iold_et > -1 ) {
+      if( iold_et == FEBRICK ) {
+         ietype = FEBRICK;
+      }
+      if( iold_et == FETRIANGLE ) {
+         ietype = FETRIANGLE;
+      }
+      if( iold_et == FETETRAHEDRON ) {
+         ietype = FETETRAHEDRON;
+      }
+      if( iold_et == FEQUADRILATERAL ) {
+         ietype = FEQUADRILATERAL;
+      }
+   }
 
 
-
+   //
    // check for consistency in "sanitized" state
+   //
    if( im > 0 && nodes > 0 ) {
       printf(" e Specified both \"im/jm/km\" and \"nodes\" in zone \n");
       iret += 1;
@@ -1017,6 +1269,8 @@ int inTec_Zone::ConsistencyCheck (void )
    }
 
 
+   // loop over all variable locations and if there are cell-centered values
+   // the sanity check is that data cannot be point (only block)
 
 
 #ifdef _DEBUG_
