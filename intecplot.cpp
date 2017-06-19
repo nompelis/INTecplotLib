@@ -230,7 +230,7 @@ int inTec_Zone::ParseKeywords( char *buf )
    // copy line to buffer and add termination character
    memcpy( data, buf, isize );
    data[isize] = '\0';
-#ifdef _DEBUG2_
+#ifdef _DEBUG3_
    printf("DATA: %s\n",data);
 #endif
 
@@ -882,7 +882,7 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
       const char *delim;
 
       // first pass is the parentheses and we assume it will not be seen again
-#ifdef _DEBUG2_
+#ifdef _DEBUG3_
      printf(" --- Searching for parentheses\n");
 #endif
       delim = (const char *) "()";
@@ -892,13 +892,13 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
          printf("CANNOT HAVE NULL TOKEN HERE!!! FILL IN ERROR-TRAPPING.\n");
          ierror = 1;
       }
-#ifdef _DEBUG2_
+#ifdef _DEBUG3_
       printf(" --- Token in parentheses --->|%s|<---\n",token);
 #endif
 
       int k;
       for( k=0,s=token; ierror==0 ; s=NULL,++k ) {
-#ifdef _DEBUG2_
+#ifdef _DEBUG3_
          printf("LOOP START: ");
          printf("S  -->|%s|<-- \n",s);
 #endif
@@ -936,11 +936,11 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
             if( isign == 1 ) {
                int i1=-1,i2=-1;
                is = sscanf( token, "%d %d", &i1,&i2);
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                printf(" --- Variable range: %d - %d \n", i1,i2);
 #endif
                if( is != 2 ) {
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                   printf(" --- Failed parsing range! \n");
 #endif
                   ierror = 2;
@@ -961,11 +961,11 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
             } else {
                int i0=-1;
                is = sscanf( token, "%d", &i0);
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                printf(" --- Variable: %d \n", i0);
 #endif
                if( is != 1 ) {
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                   printf(" --- Failed parsing variable slot! \n");
 #endif
                   ierror = 2;
@@ -982,11 +982,8 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
                   }
                }
             }
-
-
-
-#ifdef _DEBUG2_
-            printf("Inner cycling... --------------------------------------\n");
+#ifdef _DEBUG3_
+            printf(" --- Inner cycling... n");
 #endif
          }
          if( ierror != 0 ) break;
@@ -1018,37 +1015,41 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
             if( (*it).second == 99 ) (*it).second = iloc;
          }
 
-#ifdef _DEBUG2_
-         printf("Outer cycling... -----------------------------------------\n");
+#ifdef _DEBUG3_
+         printf(" --- Outer cycling... n");
 #endif
       }
 
-#ifdef _DEBUG2_
+#ifdef _DEBUG3_
       printf(" --- Variable locations (temporary) \n");
+#endif
       for( it= itmp_loc.begin(); it != itmp_loc.end(); ++it ) {
+#ifdef _DEBUG3_
          printf("      ==> var. %d location %d \n", (*it).first, (*it).second );
+#endif
          ivar_loc[ (*it).first ] = (*it).second;
       }
-#endif
 
+      // drop contents of this array (althought it would have been cleaned)
       itmp_loc.clear();
-   }
 
-if( ierror != 0 ) printf("ERROR REPORTED!!!!!!!!\n");
+      // report on errors trapped
+      if( ierror == 0 ) {
+         iret = 0;
+      } else {
+         // provide some output
+      }
 
-
-#ifdef _DEBUG_
-///// we need to move this out of here...
-   printf(" --- Variable locations \n");
-   std::map< int, int > :: iterator it;
-   for( it= ivar_loc.begin(); it != ivar_loc.end(); ++it ) {
-      printf("      ==> var. %d location %d \n", (*it).first, (*it).second );
-   }
+#ifdef _DEBUG2_
+      printf(" --- Variable locations \n");
+      for( it= ivar_loc.begin(); it != ivar_loc.end(); ++it ) {
+         printf("      ==> var. %d location %d \n", (*it).first, (*it).second );
+      }
 #endif
-exit(1);
+   }
 
 #ifdef _DEBUG_
-// printf(" --- Problematic VARLOCATION line \n");
+   if( iret != 0 ) printf(" --- Problematic VARLOCATION line \n");
 #endif
 
    // drop the buffer
@@ -1057,7 +1058,6 @@ exit(1);
 #ifdef _DEBUG_
    printf(" i Exiting HandleKeyword_Varlocation() \n");
 #endif
-//printf("EXITING IN CONSISTENCY CHECK...\n");exit(1);//HACK
    return( iret );
 }
 
@@ -1287,7 +1287,7 @@ int inTec_Zone::ParseData( char *buf )
 #ifdef _DEBUG_
    printf(" i Parsing zone data \n");
 #endif
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
    printf(" STRING: --->|%s|<---\n", buf );
 #endif
 
@@ -1304,7 +1304,7 @@ int inTec_Zone::ParseData( char *buf )
    for( i=0, string = buf; ; ++i, string = NULL ) {
       token = strtok_r( string, " ,", &sr );
       if( token == NULL ) break;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
       printf(" --- token: --->|%s|<--- \n", token );
 #endif
 
@@ -1531,10 +1531,10 @@ int inTec_File::ParseLoop()
 
 int inTec_File::IdentifyComponent( char *buf )
 {
-#ifdef _DEBUG2_
+#ifdef _DEBUG_
    printf(" i Inside \"IdentifyComponent()\" \n");
-#ifdef _DEBUG2_
-   printf("%s", buf );
+#ifdef _DEBUG3_
+   printf("BUF: -->|%s", buf );
 #endif
 #endif
 
@@ -1542,7 +1542,7 @@ int inTec_File::IdentifyComponent( char *buf )
 
    size_t isize=0;
    while( buf[isize] != '\n' && buf[isize] != '\0' ) ++isize;
-#ifdef _DEBUG2_
+#ifdef _DEBUG3_
    printf(" i Size of buffer: %d \n", (int) isize);
 #endif
 
@@ -1636,25 +1636,25 @@ int inTec_File::ParseComponent_HeaderVariables( char *buf )
    // first trap the equal sign
    s1 = data;
    token = strtok_r( s1, "=", &sr );
-#ifdef _DEBUG2_
+#ifdef _DEBUG3_
    printf("---> stok: |%s| \n",token);
    printf("---> data: |%s| \n",data);
 #endif
 
    // individual variables parsing
    s1 = NULL;
-#ifdef _DEBUG2_
-printf("Inner loop\n");
+#ifdef _DEBUG4_
+   printf("Inner loop\n");
 #endif
    for(int k=1; ; s1 = NULL, ++k) {
       token = strtok_r( s1, " ,", &sr );   // search delim either ' ' or ','
       if( token == NULL ) break;
-#ifdef _DEBUG2_
+#ifdef _DEBUG4_
       printf("---> starting inner stok: |%s| \n",token);
 #endif
 
       if( token[0] == '\"' ) {
-#ifdef _DEBUG2_
+#ifdef _DEBUG4_
          int n=1,inum=1;
          while( token[n] != ' ' && token[n] != '\0' && token[n] != '\n' ) {
             if( token[n] == '\"' ) ++inum;
@@ -1669,14 +1669,14 @@ printf("Inner loop\n");
          if( sr[-1] != '\"' )   // only in the 
             sr[-1] = ' ';       // reset farthest bound
          s1 = token;   //  s1 = &(token[1]);
-#ifdef _DEBUG2_
+#ifdef _DEBUG4_
          printf("   NEW STRING POINTER AT -->%s<-- \n", s1 );
 #endif
          token = strtok_r( s1, "\"", &sr);
          if( token == NULL ) break;
 //       if( token[0] == '\0' ) break;  // HACK
       }
-#ifdef _DEBUG2_
+#ifdef _DEBUG4_
       printf("Instance number %d: |%s|\n", k,token);
 #endif
 
@@ -1684,7 +1684,7 @@ printf("Inner loop\n");
       std::string sdum = token;
       variables.push_back( sdum );
 
-#ifdef _DEBUG2_
+#ifdef _DEBUG4_
 printf("\n"); usleep(100000);
 #endif
    }
@@ -1766,7 +1766,7 @@ int inTec_File::ParseComponent_Zone()
       size_t isize=0;
       while( isize < ibuf_size && buf[isize] != '\n' ) ++isize;
       if( buf[isize] == '\n' ) buf[isize] = '\0';
-#ifdef _DEBUG_
+#ifdef _DEBUG3_
       printf("STRING (%p, %ld):%s\n", buf, isize, buf );
 #endif
 
@@ -1993,6 +1993,11 @@ int inTec_File::ParseComponent_Text()
             // store comment in strings
             buf[ strlen(buf) ] = '\n';
             strings[ iline ] = buf;
+#ifdef _DEBUG_
+            printf(" i Added comment to strings line %ld \n", iline );
+#endif
+            // show the line
+            printf(" [%ld]  %s", iline, buf );
          } else {
 #ifdef _DEBUG2_
             printf(" --- Found component (at _or_ after Text component) \n");
