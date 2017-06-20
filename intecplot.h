@@ -33,7 +33,7 @@ class inTec_Zone {
    int ParseKeywords( char *buf );
    int HandleKeyword( char *buf );
    int SetState_Reading( void );
-   int ParseData( char *buf );
+   int ParseNumericData( char *buf );
 
  protected:
    void InitKeywords();
@@ -50,7 +50,7 @@ class inTec_Zone {
 
  private:
    inTec_File *file;
-   long ipos,ipos_data;
+   long ipos,ipos_data,ipos_conn;
    std::map< std::string, std::string > keywords;
 
    int CheckCharForNum( char c ) const;

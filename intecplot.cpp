@@ -12,7 +12,7 @@ extern "C" {
 
 
 enum inTecFile_Component {
-   Unknown = 0,
+   Unknown = -1,
 
    Title = 11,
    Filetype = 12,
@@ -58,6 +58,7 @@ inTec_Zone::inTec_Zone( inTec_File* file_ )
    istate = 0;
    ipos = 0;
    ipos_data = 0;
+   ipos_conn = 0;
 
    // keyword-based variables
    tkey = NULL;
@@ -452,7 +453,7 @@ int inTec_Zone::ParseKeywords( char *buf )
       // provide some output
       if( iparse == 1 ) {
          printf(" (parsing now)");
-         data[n+0] = '\0';//HACK HERE
+         data[n+0] = '\0';//HACK
 
          int iret = HandleKeyword( s );
          // allow for the possibility of dealiing with this differently...
@@ -660,7 +661,7 @@ int inTec_Zone::ManageInternals( void )
 #endif
    int ierror=0,iret;
 
-//HERE
+//HERE0
    // processing individual keywords
    const char *string=NULL,*string2=NULL;
    size_t is;
@@ -699,7 +700,7 @@ int inTec_Zone::ManageInternals( void )
             if( iret != 0 ) ierror += 1;
          }
          if( strncasecmp( string, "F", 1 ) == 0 ) {
-         // will deal with this later
+         // will deal with this later...
          // iret = HandleKeyword_F( string2 );
             if( iret != 0 ) ierror += 1;
          }
@@ -707,7 +708,7 @@ int inTec_Zone::ManageInternals( void )
 
       if( is == 2 ) {
          if( strncasecmp( string, "DT", 2 ) == 0 ) {
-            // will do this later
+            // will do this later...
          }
 
          if( strncasecmp( string, "ET", 2 ) == 0 ) {
@@ -716,7 +717,7 @@ int inTec_Zone::ManageInternals( void )
          }
 
          if( strncasecmp( string, "NV", 2 ) == 0 ) {
-            // will do this later
+            // will do this later...
          }
 
       }
@@ -864,7 +865,6 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
       }
    }
 
-//HERE2
    // the case where variables are individualluy separated
    int ierror=0;
    if( iret != 0 && is >= 15 ) {    // the check may be different...
@@ -889,7 +889,7 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
       token = strtok_r( buf, delim, &sr );
       if( token == NULL ) {
          // this is in error
-         printf("CANNOT HAVE NULL TOKEN HERE!!! FILL IN ERROR-TRAPPING.\n");
+         printf(" e Malformed varlocation line!\n");
          ierror = 1;
       }
 #ifdef _DEBUG3_
@@ -1206,7 +1206,7 @@ int inTec_Zone::ConsistencyCheck (void )
 #ifdef _DEBUG_
    printf(" i Inside ConsistencyCheck() \n");
 #endif
-   int iret=0;
+   int iret=0,ierror;
 
 #ifdef _DEBUG_
    // display all stored keywords as they were found after sanitized parsing
@@ -1216,25 +1216,30 @@ int inTec_Zone::ConsistencyCheck (void )
    for( imap = keywords.begin(); imap != keywords.end(); ++imap ) {
       printf("   %d  ", i++ );
       string = (*imap).first.c_str();
-      printf("   %s  ", string );
+      printf("   %16s ", string );
       string2 = (*imap).second.c_str();
-      printf("   \"%s\"\n", string2 );
+      printf("= \"%s\"\n", string2 );
    }
 #endif
 
+//HERE1 (consistency checks not fully tested)
    //
    // first check for old-style variables
    // (possibly set a variable indicating that OLD switches are present)
    //
 #ifdef _DEBUG_
-   printf("iold_n: %ld \n", iold_n);
-   printf("iold_e: %ld \n", iold_e);
-   printf("iold_et: %d \n", iold_et);
+   printf(" --- Old variables: \n");
+   printf("   iold_n: %ld \n", iold_n);
+   printf("   iold_e: %ld \n", iold_e);
+   printf("   iold_et: %d \n", iold_et);
 #endif
-   /// give precedence of old switches... (incomplete)
+   /// give precedence to old switches... (incomplete)
    if( iold_n > 0 ) nodes = iold_n;
    if( iold_e > 0 ) elems = iold_e;
    if( iold_et > -1 ) {
+#ifdef _DEBUG_
+      printf(" --- Overriding ZONETYPE keyword; the ET keyword exists \n");
+#endif
       if( iold_et == FEBRICK ) {
          ietype = FEBRICK;
       }
@@ -1253,24 +1258,62 @@ int inTec_Zone::ConsistencyCheck (void )
    //
    // check for consistency in "sanitized" state
    //
+   ierror = 0;
    if( im > 0 && nodes > 0 ) {
       printf(" e Specified both \"im/jm/km\" and \"nodes\" in zone \n");
+      ierror = 1;
       iret += 1;
+   } else {
+#ifdef _DEBUG_
+      printf(" --- Either I/J/K or N/NODES specified exclusively; good \n");
+#endif
    }
 
-   if( im > 0 && ietype != ORDERED ) {
-      printf(" e Conflicting specification of ZONETYPE and data provided\n");
-      iret += 1;
+   ierror = 0;
+   if( im > 0 ) {
+      if( ietype != ORDERED ) {
+         printf(" e Conflicting specification of ZONETYPE and data provided\n");
+         ierror = 1;
+         iret += 1;
+      } else {
+#ifdef _DEBUG_
+         printf(" --- ZONETYPE is ORDERED and I is non-zero; good \n");
+#endif
+      }
    }
 
+   ierror = 0;
    if( nodes > 0 && ietype == ORDERED ) {
       printf(" e Number of nodes provided for an ordered zone \n");
+      ierror = 1;
       iret += 1;
+   } else {
+#ifdef _DEBUG_
+      printf(" --- ZONETYPE is not ORDERED while NODES is non-zero; good \n");
+#endif
    }
 
 
    // loop over all variable locations and if there are cell-centered values
    // the sanity check is that data cannot be point (only block)
+   ierror = 0;
+   std::map< int, int > :: iterator it;
+   for( it = ivar_loc.begin(); it != ivar_loc.end(); ++it ) {
+      if( (*it).second == 2 && idatapack != 2 ) ierror += 1;
+   }
+   if( ierror != 0 ) {
+      printf(" e VARLOCATION is cell-centered for %d variables...\n", ierror );
+      printf("   ...but DATAPACKING specified as POINT (must be BLOCK)\n");
+      iret += 1;
+   } else {
+#ifdef _DEBUG_
+      printf(" --- VARLOCATION is compatible with DATAPACKING ");
+      if( idatapack == 1 ) printf("(POINT)\n");
+      if( idatapack == 2 ) printf("(BLOCK)\n");
+#endif
+   }
+
+
 
 
 #ifdef _DEBUG_
@@ -1282,10 +1325,10 @@ int inTec_Zone::ConsistencyCheck (void )
 
 
 
-int inTec_Zone::ParseData( char *buf )
+int inTec_Zone::ParseNumericData( char *buf )
 {
 #ifdef _DEBUG_
-   printf(" i Parsing zone data \n");
+   printf(" i Parsing numeric data \n");
 #endif
 #ifdef _DEBUG2_
    printf(" STRING: --->|%s|<---\n", buf );
@@ -1375,10 +1418,15 @@ int inTec_File::OpenRead()
    printf(" i Opening file object \"%s\" \n", name );
 #endif
 
+   if( istate != 0 ) {
+      printf(" e File object is not in the right state (%d)\n", istate);
+      return(1);
+   }
+
    fp = fopen( name, "r" );
    if( fp == NULL ) {
       printf(" e Could not open file \"%s\"\n", name );
-      return(1);
+      return(2);
    }
 
    istate = 1;
@@ -1392,9 +1440,14 @@ int inTec_File::Close()
 #ifdef _DEBUG_
    printf(" i Closing file object \"%s\" \n", name );
 #endif
+
+   if( istate == 0 || istate == 1000 ) {
+      return(0);
+   }
+
    fclose( fp );
 
-   istate = 0;
+   istate = 1000;
    iline = 0;
    ipos = 0;
 
@@ -1430,7 +1483,9 @@ int inTec_File::Parse()
 
    int iret = ParseLoop();
 
-
+   if( iret != 0 ) {
+      return(2);
+   }
 
    return(0);
 }
@@ -1533,12 +1588,12 @@ int inTec_File::IdentifyComponent( char *buf )
 {
 #ifdef _DEBUG_
    printf(" i Inside \"IdentifyComponent()\" \n");
-#ifdef _DEBUG3_
-   printf("BUF: -->|%s", buf );
-#endif
 #endif
 
    if( buf == NULL ) return(-1);
+#ifdef _DEBUG3_
+   printf("BUF: -->|%s", buf );
+#endif
 
    size_t isize=0;
    while( buf[isize] != '\n' && buf[isize] != '\0' ) ++isize;
@@ -1591,15 +1646,17 @@ int inTec_File::ParseComponent_Header( int iop, char *buf )
 #endif
 
    switch( iop ) {
-    case(1):
+    case(1):   // title
 
-
-    break;
-    case(2):
-
+      printf(" i Parsing header \"title\" line \n");
 
     break;
-    case(3):
+    case(2):   // filetype
+
+      printf(" i Parsing header \"filetype\" line \n");
+
+    break;
+    case(3):   // variables
 
       printf(" i Parsing header \"variables\" line \n");
       return( ParseComponent_HeaderVariables( buf ) );
@@ -1704,7 +1761,11 @@ int inTec_File::ParseComponent_Zone()
 
    // instantiate a zone object
    inTec_Zone *zone = new inTec_Zone( this );
-   // check for allocation error... return(-1)
+   // check for allocation error
+   if( zone == NULL ) {
+      printf(" e Could not allocate zone! \n");
+      return(-1);
+   }
 
    // set the position in the file for this zone
    int iret = zone->SetPositionInFile( ipos );
@@ -1734,7 +1795,6 @@ int inTec_File::ParseComponent_Zone()
    // N=  NODES=
    // E=  ELEMENTS=
 
-
    // The idea here is to keep ingesting in lines until we find a new component
    // We ingest comments that can interrupt the geometry component
    // Once a new component is detected, we wrap up the process
@@ -1758,6 +1818,10 @@ int inTec_File::ParseComponent_Zone()
       // read a line of data; get count of bytes read
       ic = inUtils_ReadTextline( &ibuf_size, &buf, fp );
       // check error code
+      if( ic < 0 ) {
+         printf(" e There was an external library error (inUtils): %d\n", ic);
+         return(-2);    // this error code may have to change
+      }
 
       ++iline;
 
@@ -1856,7 +1920,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
                // (here we must put the zone in data-reading particular state)
                if( zone->SetState_Reading() != 0 ) {
                   // respond to the possibility of the zone being mis-used...
-
+                  return(5);   // this error code may change
                }
 
             } else if( np < 0 ) {
@@ -1873,7 +1937,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
 #endif
             // push the buffer to the zone for data extraction
             // (we must have set the zone to a data-reading state earlier)
-            iret = zone->ParseData( buf );
+            iret = zone->ParseNumericData( buf );
             // possibly respond to errors returned by the zone...
             if( iret < 0 ) {
                printf(" e Error parsing zone data \n");
