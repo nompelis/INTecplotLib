@@ -79,10 +79,19 @@ inTec_Zone::inTec_Zone( inTec_File* file_ )
    iold_et = -1;
    iold_f = -1;
 
+   // utility variables
+   iparse_num = 0;
+   node_cnt = 0;
+   elem_cnt = 0;
+   var_cnt = 0;
+   icon_cnt = 0;
+
    InitKeywords();
 
    file = file_;
    num_var = 0;
+   icon = NULL;
+   ncon = 0;
    // if the zone has a parent file, get the number of variables, etc
    if( file != NULL ) {
       num_var = file->GetNumVariables();
@@ -96,6 +105,18 @@ inTec_Zone::~inTec_Zone( )
 #ifdef _DEBUG_
    printf(" i Zone object deconstructed\n");
 #endif
+
+   std::vector< double * > :: iterator dpi;
+   for( dpi = var_vec.begin() ; dpi != var_vec.end() ; ++dpi ) {
+      if( (*dpi) != NULL ) {
+         double *tp = (*dpi);
+ //HACK  free( tp );
+         (*dpi) = NULL;
+      }
+   }
+   var_vec.clear();
+
+   if( icon != NULL ) free( icon );
 
 #ifdef _DEBUG_
    printf(" i Keywords in zone (%ld) \n", keywords.size());
@@ -143,7 +164,7 @@ void inTec_Zone::InitKeywords()
 // keywords["FACENEIGHBORCONNECTIONS"] = "";
    keywords["DT"] = "SINGLE";
    keywords["DATAPACKING"] = "BLOCK";
-   keywords["VARLOCATION"] = "NODAL";
+   keywords["VARLOCATION"] = "(NODAL)";
 // keywords["VARSHARELIST"] = "";
 // keywords["NV"] = "";
 // keywords["CONNECTIVITYSHAREZONE"] = "";
@@ -452,7 +473,9 @@ int inTec_Zone::ParseKeywords( char *buf )
 
       // provide some output
       if( iparse == 1 ) {
+#ifdef _DEBUG_
          printf(" (parsing now)");
+#endif
          data[n+0] = '\0';//HACK
 
          int iret = HandleKeyword( s );
@@ -661,7 +684,6 @@ int inTec_Zone::ManageInternals( void )
 #endif
    int ierror=0,iret;
 
-//HERE0
    // processing individual keywords
    const char *string=NULL,*string2=NULL;
    size_t is;
@@ -776,13 +798,132 @@ int inTec_Zone::ManageInternals( void )
    // final error check
    if( ierror != 0 ) {
       iret = 1;
-   } else {
-      iret = 0;
+#ifdef _DEBUG_
+      printf(" e Exiting ManageInternals() in error (return %d) \n",iret);
+#endif
+      return( iret );
    }
+
+   //
+   // allocate memory for variables
+   //
+
+   // get a vertex and cell count
+   size_t iv=0,ie=0;
+
+   // first try the ordered zone sizes; a sanity check is built-in...
+   if( ietype == ORDERED && im > 0 ) {
+      if( jm > 0 ) {
+         if( km > 0 ) {
+            iv = (size_t) (im*jm*km);
+            ie = (size_t) ((im-1)*(jm-1)*(km-1));
+         } else {
+            iv = (size_t) (im*jm);
+            ie = (size_t) ((im-1)*(jm-1));
+         }
+      } else {
+         iv = (size_t) im;
+         ie = (size_t) (im-1);
+      }
+   }
+
+   // then try the unstruct. zone sizes; a sanity check is built-in...
+   if( ietype != ORDERED && nodes > 0 ) {
+      iv = (size_t) nodes;
+      ie = (size_t) elems;
+   }
+
+#ifdef _DEBUG_
+   printf(" i Number of vertices  %ld, elements  %ld \n",
+          (unsigned long) iv, (unsigned long) ie );
+#endif
+
+   // sanity check
+   if( iv <= 0 || ie <= 0 ) {
+      printf(" e Cannot have zero nodes or zero elements \n");
+      iret = 1;
+#ifdef _DEBUG_
+      printf(" e Exiting ManageInternals() in error (return %d) \n",iret);
+#endif
+      return( iret );
+   }
+
+   // allocate memory for data arrays
+   for(int n=1;n<=num_var;++n) {
+      if( ivar_loc[n] == 1 ) {
+         double *p = (double *) malloc(iv*sizeof(double));
+         var_vec.push_back( p );
+         if( p == NULL ) ierror += 1;
+#ifdef _DEBUG_
+         printf(" --- Vertex-data pointer at %p \n", p );
+#endif
+      } else if( ivar_loc[n] == 2 ) {
+         double *p = (double *) malloc(ie*sizeof(double));
+         var_vec.push_back( p );
+         if( p == NULL ) ierror += 1;
+#ifdef _DEBUG_
+         printf(" --- Cell-data pointer at %p \n", p );
+#endif
+      } else {
+         // allow for the provision to skip allocating memory for a variable
+      }
+   }
+
+   // allocate memory for connectivity if needed
+   if( ietype != ORDERED ) {
+      if( ietype == FETRIANGLE ) ncon = 3;
+      if( ietype == FEQUADRILATERAL) ncon = 4;
+      if( ietype == FETETRAHEDRON) ncon = 4;
+      if( ietype == FEBRICK) ncon = 8;
+
+      size_t isize = (size_t) (elems*ncon);
+      icon = (unsigned long *) malloc(isize*sizeof(unsigned long));
+      if( icon == NULL ) ierror += 1;
+   }
+
+   // drop all memory on any allocation error
+   if( ierror != 0 ) {
+#ifdef _DEBUG_
+      printf(" e There was an allocation error!\n");
+#endif
+      if( icon != NULL ) free( icon );
+
+      std::vector< double * > :: iterator dpi;
+      for( dpi = var_vec.begin() ; dpi != var_vec.end() ; ++dpi ) {
+         if( (*dpi) != NULL ) {
+#ifdef _DEBUG_
+            printf(" --- Freeing memory at: %p \n", (*dpi) );
+#endif
+            free( (*dpi) );
+         }
+      }
+      var_vec.clear();
+
+      iret = 1;
+#ifdef _DEBUG_
+      printf(" e Exiting ManageInternals() in error (return %d) \n",iret);
+#endif
+   }
+
+/*
+   // set certain internal counters for numeric data reading (later)
+   var_no_cnt = 0;
+   var_cc_cnt = 0;
+   for(int n=1;n<=num_var;++n) {
+      if( ivar_loc[n] == 1 ) {
+         var_no_cnt += 1;
+      } else if( ivar_loc[n] == 2 ) {
+         var_cc_cnt += 1;
+      } else {
+         // I have not thought about this one...
+      }
+   }
+*///HACK
 
 #ifdef _DEBUG_
    printf(" i Exiting ManageInternals() (return %d) \n",iret);
 #endif
+//printf("EXITING PREMATURELY IN MANAGE...\n");exit(1);//HACK
    return( iret );
 }
 
@@ -852,7 +993,7 @@ int inTec_Zone::HandleKeyword_Varlocation( const char *string )
 
    // the case where all variables are nodal, which is the default
    if( iret != 0 && is >= 5 ) {
-      if( strncasecmp( s, "NODAL", 5 ) == 0 ) {
+      if( strncasecmp( s, "(NODAL)", 7 ) == 0 ) {
          // perhaps do something to mark all variables as nodal
          std::map< int, int > :: iterator it;
          for( it= ivar_loc.begin(); it != ivar_loc.end(); ++it ) {
@@ -1240,9 +1381,6 @@ int inTec_Zone::ConsistencyCheck (void )
 #ifdef _DEBUG_
       printf(" --- Overriding ZONETYPE keyword; the ET keyword exists \n");
 #endif
-      if( iold_et == FEBRICK ) {
-         ietype = FEBRICK;
-      }
       if( iold_et == FETRIANGLE ) {
          ietype = FETRIANGLE;
       }
@@ -1251,6 +1389,9 @@ int inTec_Zone::ConsistencyCheck (void )
       }
       if( iold_et == FEQUADRILATERAL ) {
          ietype = FEQUADRILATERAL;
+      }
+      if( iold_et == FEBRICK ) {
+         ietype = FEBRICK;
       }
    }
 
@@ -1319,7 +1460,7 @@ int inTec_Zone::ConsistencyCheck (void )
 #ifdef _DEBUG_
    printf(" i Exiting ConsistencyCheck() (return %d) \n",iret);
 #endif
-  printf("EXITING IN CONSISTENCY CHECK...\n");exit(1);//HACK
+//printf("EXITING IN CONSISTENCY CHECK...\n");exit(1);//HACK
    return( iret );
 }
 
@@ -1330,6 +1471,16 @@ int inTec_Zone::ParseNumericData( char *buf )
 #ifdef _DEBUG_
    printf(" i Parsing numeric data \n");
 #endif
+   // set the numeric parsing state when we first try to parse data
+   if( iparse_num == 0 ) {
+      iparse_num = 1;      // indicates that we are begining to parse data
+   } else if( iparse_num == 2 ) {
+      iparse_num = 3;
+   } else {
+      // now that the check completed; reset bounds?????
+   }
+
+
 #ifdef _DEBUG2_
    printf(" STRING: --->|%s|<---\n", buf );
 #endif
@@ -1342,19 +1493,302 @@ int inTec_Zone::ParseNumericData( char *buf )
       ++i;
    }
 
-   // parse segments separated by spaces or commans
-   char *string,*token,*sr;
-   for( i=0, string = buf; ; ++i, string = NULL ) {
-      token = strtok_r( string, " ,", &sr );
-      if( token == NULL ) break;
+   // parse segments separated by spaces or commas (expecting reals/doubles)
+   if( iparse_num == 1 ) {
+      char *string,*token,*sr;
+      for( i=0, string = buf; ; ++i, string = NULL ) {
+         token = strtok_r( string, " ,", &sr );
+         if( token == NULL ) break;
 #ifdef _DEBUG2_
-      printf(" --- token: --->|%s|<--- \n", token );
+         printf(" --- token: --->|%s|<--- \n", token );
 #endif
 
+         char *c;
+         double d = strtod( token, &c );
+#ifdef _DEBUG2_
+         printf(" --- value: %lf \n", d );
+#endif
 
+#ifdef _DEBUG2_
+         // display internal counter states
+         printf(" --- node_cnt: %ld  elem_cnt: %ld  var_cnt: %d (prior) \n",
+                node_cnt, elem_cnt, var_cnt );
+#endif
+
+         // get pointer to data array for variable
+         double *dp = var_vec[ var_cnt ];
+#ifdef _DEBUG2_
+         printf(" --- pointer: %p    (varloc.: %d) \n", dp,ivar_loc[var_cnt+1]);
+#endif
+
+         if( idatapack == 1 ) {   // POINT
+            dp[ node_cnt ] = d;
+
+            // update counters
+            ++var_cnt;
+            if( var_cnt == num_var ) {
+               ++node_cnt;
+
+               // check for a termination condition
+               if( node_cnt == nodes ) {
+                  node_cnt = 0;
+#ifdef _DEBUG_
+                  printf(" --- Parsing of variable data ending \n");
+#endif
+                  iparse_num = 2;
+               }
+
+               var_cnt = 0;
+            }
+
+         } else {   // BLOCK
+            int iloc = ivar_loc[ var_cnt+1 ];
+            if( iloc == 1 ) {
+               dp[ node_cnt ] = d;
+
+               ++node_cnt;
+               if( node_cnt == nodes ) {
+                  ++var_cnt;
+                  node_cnt = 0;
+               }
+            } else if( iloc == 2 ) {
+               dp[ elem_cnt ] = d;
+
+               ++elem_cnt;
+               if( elem_cnt == elems ) {
+                  ++var_cnt;
+                  elem_cnt = 0;
+               }
+            } else {
+               // I have not thought about how to do this...
+            }
+
+            // termination condition
+            if( var_cnt == num_var ) {
+               var_cnt = 0;
+               iparse_num = 2;
+#ifdef _DEBUG_
+               printf(" --- Parsing of numeric data ending \n");
+#endif
+            }
+         }
+
+      }  // strtok loop
+   }  // iparse_num=1
+
+   // parse segments separated by spaces (expecting connectivity in one line)
+   if( iparse_num == 3 ) {
+      unsigned long n1,n2,n3,n4,n5,n6,n7,n8;
+      int ic;
+
+      if( ietype == FETRIANGLE ) 
+         ic = sscanf( buf, "%ld %ld %ld", &n1,&n2,&n3 );
+      if( ietype == FEQUADRILATERAL ) 
+         ic = sscanf( buf, "%ld %ld %ld %ld", &n1,&n2,&n3,&n4 );
+      if( ietype == FETETRAHEDRON ) 
+         ic = sscanf( buf, "%ld %ld %ld %ld", &n1,&n2,&n3,&n4 );
+      if( ietype == FEBRICK ) 
+         ic = sscanf( buf, "%ld %ld %ld %ld %ld %ld %ld %ld",
+                            &n1,&n2,&n3,&n4,&n5,&n6,&n7,&n8 );
+
+#ifdef _DEBUG2_
+         printf(" --- Connectivity elements picked: %d \n", ic);
+#endif
+      if( ic > 0 ) {
+         unsigned long n = ncon*icon_cnt;
+
+         if( ic >= 3 ) {
+            icon[ n+0 ] = n1;
+            icon[ n+1 ] = n2;
+            icon[ n+2 ] = n3;
+         }
+         if( ic >= 4 ) {
+            icon[ n+3 ] = n4;
+         }
+         if( ic >= 8 ) {
+            icon[ n+4 ] = n5;
+            icon[ n+5 ] = n6;
+            icon[ n+6 ] = n7;
+            icon[ n+7 ] = n8;
+         }
+
+         icon_cnt += 1;
+      }
 
    }
 
+   return(0);
+}
+
+
+int inTec_Zone::Dump( const char *filename )
+{
+   if( file == NULL ) return(1);
+
+#ifdef _DEBUG_
+   printf(" i Dumping zone to file \"%s\"\n", filename);
+#endif
+
+   FILE *fout = fopen( filename, "w" );
+   if( fout == NULL ) {
+      printf(" e Could not open file for writing!\n");
+      return(-1);
+   }
+
+   // write the variables first
+   fprintf( fout, "VARIABLES = " );
+   // (queries back the file structure/class)
+   for(int n=0;n<num_var;++n) {
+      const char *s = file->GetVariableName( n );
+      fprintf( fout, "\"%s\" ", s );
+   }
+   fprintf( fout, "\n" );
+
+   // put a zone keywords and attach the "T" keyword to it
+   fprintf( fout, "ZONE " );
+   std::map< std::string, std::string > :: iterator imt;
+   for( imt = keywords.begin(); imt != keywords.end(); ++imt ) {
+      if( strlen( (*imt).first.c_str() ) == 1 ) {
+         if( strncmp( (*imt).first.c_str(), "T", 1 ) == 0 ) {
+            const char *s = (*imt).second.c_str();
+            if( s[0] == '\"' ) {
+               fprintf( fout, "T=%s, ", s );
+            } else {
+               fprintf( fout, "T=\"%s\", ", s );
+            }
+         }
+      }
+   }
+
+   // decide which essential keywords to use
+   if( ietype == ORDERED ) {
+      if( im > 0 ) fprintf( fout, "I=%ld, ", im );
+      if( jm > 0 ) fprintf( fout, "J=%ld, ", jm );
+      if( km > 0 ) fprintf( fout, "K=%ld, ", km );
+
+
+
+   } else {
+      if( nodes > 0 ) fprintf( fout, "NODES=%ld, ", nodes );
+      if( elems > 0 ) fprintf( fout, "ELEMENTS=%ld, ", elems );
+
+      if( ietype == FETRIANGLE ) 
+         fprintf( fout, "ZONETYPE=FETRIANGLE, " );
+      if( ietype == FEQUADRILATERAL ) 
+         fprintf( fout, "ZONETYPE=FEQUADRILATERAL, " );
+      if( ietype == FETETRAHEDRON ) 
+         fprintf( fout, "ZONETYPE=FETETRAHEDRON, " );
+      if( ietype == FEBRICK )
+         fprintf( fout, "ZONETYPE=FEBRICK, " );
+
+
+   // for( imt = keywords.begin(); imt != keywords.end(); ++imt ) {
+   //    if( strlen( (*imt).first.c_str() ) == 11 ) {
+   //       if( strncmp( (*imt).first.c_str(), "VARLOCATION", 11 ) == 0 ) {
+   //          fprintf( fout, "VARLOCATION=%s ", (*imt).second.c_str() );
+   //       }
+   //    }
+   // }
+
+   }
+
+   if( idatapack == 1 ) {
+      fprintf( fout, " DATAPACKING=POINT,\n" );
+   } else {
+      fprintf( fout, " DATAPACKING=BLOCK,\n" );
+   }
+
+   for( imt = keywords.begin(); imt != keywords.end(); ++imt ) {
+      if( strlen( (*imt).first.c_str() ) == 11 ) {
+         const char *s = (*imt).second.c_str();
+         // perhaps do some string sanitation here (capitalization, etc...)
+         if( strncmp( (*imt).first.c_str(), "VARLOCATION", 11 ) == 0 ) {
+            fprintf( fout, "VARLOCATION=%s ", s );
+         }
+      }
+   }
+   fprintf( fout, "\n" );
+
+
+   if( ietype == ORDERED ) {
+      unsigned long jmt=1,kmt=1;
+
+      if( idatapack == 1 ) {
+         if( jm > 0 ) jmt = jm;
+         if( km > 0 ) kmt = km;
+
+         for(unsigned long k=0;k<kmt;++k) {
+         for(unsigned long j=0;j<jmt;++j) {
+         for(unsigned long i=0;i<im;++i) {
+            unsigned long n = k*jmt*im + j*im + i;
+            for(int kk=0;kk<num_var;++kk) {
+               fprintf( fout, " %18.11e", var_vec[kk][n] );
+            }
+            fprintf( fout, "\n");
+         }}}
+      } else {
+         for(int kk=0;kk<num_var;++kk) {
+            if( ivar_loc[kk+1] == 1 ) {   // nodal
+               if( jm > 0 ) jmt = jm;
+               if( km > 0 ) kmt = km;
+
+               for(unsigned long k=0;k<kmt;++k) {
+               for(unsigned long j=0;j<jmt;++j) {
+               for(unsigned long i=0;i<im;++i) {
+                  unsigned long n = k*jmt*im + j*im + i;
+                  fprintf( fout, " %18.11e \n", var_vec[kk][n] );
+               }}}
+            } else {  // cell-centered
+               if( jm > 0 ) jmt = jm-1;
+               if( km > 0 ) kmt = km-1;
+
+               for(unsigned long i=0;i<im-1;++i) {
+               for(unsigned long j=0;j<jmt;++j) {
+               for(unsigned long k=0;k<kmt;++k) {
+                  unsigned long n = k*jmt*(im-1) + j*(im-1) + i;
+                  fprintf( fout, " %18.11e \n", var_vec[kk][n] );
+               }}}
+            }
+         }
+      } // datapack
+   } else {  // unstructured data
+      if( idatapack == 1 ) {
+         for(unsigned long n=0;n<nodes;++n) {
+            for(int kk=0;kk<num_var;++kk) {
+               fprintf( fout, " %18.11e", var_vec[kk][n] );
+            }
+            fprintf( fout, " \n" );
+         }
+      } else {
+         for(int kk=0;kk<num_var;++kk) {
+            if( ivar_loc[kk+1] == 1 ) {   // nodal
+               for(unsigned long n=0;n<nodes;++n) {
+                  fprintf( fout, " %18.11e \n", var_vec[kk][n] );
+               }
+            } else {  // cell-centered
+               for(unsigned long n=0;n<elems;++n) {
+                  fprintf( fout, " %18.11e \n", var_vec[kk][n] );
+               }
+            }
+         }
+      } // datapack
+
+      // dump connectivity
+      for(unsigned long i=0;i<elems;++i) {
+         for(unsigned long j=0;j<ncon;++j) {
+            fprintf( fout, " %ld", icon[ i*ncon + j ] );
+         }
+         fprintf( fout, "\n" );
+      }
+   }
+
+   // close the file
+   fflush( fout );
+   fclose( fout );
+
+#ifdef _DEBUG_
+   printf(" i Finished dumping zone to file \"%s\"\n", filename);
+#endif
    return(0);
 }
 
@@ -1605,13 +2039,9 @@ int inTec_File::IdentifyComponent( char *buf )
 
    if( buf[0] == '#' ) return( Comment );
 
-   if( isize >= 4 ) {
-      if( strncasecmp( "ZONE", buf, 4 ) == 0 ) return( Zone );
-      if( strncasecmp( "TEXT", buf, 4 ) == 0 ) return( Text );
-   }
+   if( isize >= 9 ) {
+      if( strncasecmp( "VARIABLES", buf, 9 ) == 0 ) return( Variables );
 
-   if( isize >= 5 ) {
-      if( strncasecmp( "TITLE", buf, 5 ) == 0 ) return( Title );
    }
 
    if( isize >= 8 ) {
@@ -1619,9 +2049,13 @@ int inTec_File::IdentifyComponent( char *buf )
       if( strncasecmp( "GEOMETRY", buf, 8 ) == 0 ) return( Geometry );
    }
 
-   if( isize >= 9 ) {
-      if( strncasecmp( "VARIABLES", buf, 9 ) == 0 ) return( Variables );
+   if( isize >= 5 ) {
+      if( strncasecmp( "TITLE", buf, 5 ) == 0 ) return( Title );
+   }
 
+   if( isize >= 4 ) {
+      if( strncasecmp( "ZONE", buf, 4 ) == 0 ) return( Zone );
+      if( strncasecmp( "TEXT", buf, 4 ) == 0 ) return( Text );
    }
 
 
@@ -1648,17 +2082,23 @@ int inTec_File::ParseComponent_Header( int iop, char *buf )
    switch( iop ) {
     case(1):   // title
 
+#ifdef _DEBUG_
       printf(" i Parsing header \"title\" line \n");
+#endif
 
     break;
     case(2):   // filetype
 
+#ifdef _DEBUG_
       printf(" i Parsing header \"filetype\" line \n");
+#endif
 
     break;
     case(3):   // variables
 
+#ifdef _DEBUG_
       printf(" i Parsing header \"variables\" line \n");
+#endif
       return( ParseComponent_HeaderVariables( buf ) );
 
     break;
@@ -1706,7 +2146,7 @@ int inTec_File::ParseComponent_HeaderVariables( char *buf )
    for(int k=1; ; s1 = NULL, ++k) {
       token = strtok_r( s1, " ,", &sr );   // search delim either ' ' or ','
       if( token == NULL ) break;
-#ifdef _DEBUG4_
+#ifdef _DEBUG3_
       printf("---> starting inner stok: |%s| \n",token);
 #endif
 
@@ -1838,7 +2278,7 @@ int inTec_File::ParseComponent_Zone()
       int iparse_line=1;    // default is to parse the line
       iret = IdentifyComponent( buf );
 #ifdef _DEBUG3_
-printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
+printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
 #endif
       // check if we have jumped to a new component under certain conditions...
       if( iret > 0 ) {             // we found a component
@@ -1863,6 +2303,11 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
             printf(" --- Found component (at _or_ after Zone component)\n");
 #endif
             // over-write the "zone" keyword marker if this is the first pass
+// 
+//  This fails when finding leading "ZONETYPE" for example!!!
+//  What I need to do is to find a better trap for this
+// 
+// 
             if( idone_zone == 0 ) {
                buf[0] = ' '; buf[1] = ' '; buf[2] = ' '; buf[3] = ' ';
             }
@@ -1962,12 +2407,13 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);//HACK
    --iline;
 //----------
 
+zone->Dump( (const char *) "crap.dat" );
 // temporarily drop the zone object
 #ifdef _DEBUG_
 printf("HACK dropping the zone object\n");
-#endif
 delete zone; //HACK
-//printf("EXITING....\n");exit(0);//HACK
+#endif
+  printf("EXITING PREMATURELY IN ParseComponent_Zone() \n");exit(1);//HACK
 
 #ifdef _DEBUG_
    printf(" i *** Skipping parsing of ZONE component *** \n");
@@ -2278,6 +2724,14 @@ int inTec_File::ParseComponent_Geometry()
 }
 
 
+const char* inTec_File::GetVariableName( int nvar_ ) const
+{
+   if( nvar_ < 0 ) return( NULL );
+
+   if( (unsigned int) nvar_ >= variables.size() ) return( NULL );
+
+   return( variables[ nvar_ ].c_str() );
+}
 
 
 }

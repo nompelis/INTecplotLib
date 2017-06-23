@@ -35,6 +35,8 @@ class inTec_Zone {
    int SetState_Reading( void );
    int ParseNumericData( char *buf );
 
+   int Dump( const char *file ); 
+
  protected:
    void InitKeywords();
    int istate;
@@ -43,6 +45,8 @@ class inTec_Zone {
    int num_var, parent_zone, nv;
    unsigned long im,jm,km,nodes,elems;
    std::map< int, int > ivar_loc;
+   std::vector< double * > var_vec;
+   unsigned long *icon,ncon;
 
    // old-style variables
    unsigned long iold_n, iold_e;
@@ -62,6 +66,12 @@ class inTec_Zone {
    int HandleKeyword_Zonetype( const char *string );
    int HandleKeyword_Varsharelist( const char *string );
    int ConsistencyCheck( void );
+
+   // variables to aid in the parsing of numeric part
+   int iparse_num;
+   unsigned long node_cnt, elem_cnt;
+   int var_cnt;
+   unsigned long icon_cnt;
 };
 
 
@@ -81,6 +91,7 @@ class inTec_File {
    int GetState( void ) const;
    FILE* GetFP( void ) const;
    int GetNumVariables( void ) const;
+   const char* GetVariableName( int nvar_ ) const;
 
  protected:
    int ParseLoop();
