@@ -111,6 +111,8 @@ inTec_Zone::~inTec_Zone( )
       if( (*dpi) != NULL ) {
          double *tp = (*dpi);
  //HACK  free( tp );
+#warning "CLEAN THIS IF ERROR"
+         free( tp );
          (*dpi) = NULL;
       }
    }
@@ -2303,16 +2305,24 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
             printf(" --- Found component (at _or_ after Zone component)\n");
 #endif
             // over-write the "zone" keyword marker if this is the first pass
+            if( idone_zone == 0 ) {
+               buf[0] = ' '; buf[1] = ' '; buf[2] = ' '; buf[3] = ' ';
+            }
+
+            // possibly deal with a "false positive" of a zone...
 // 
 //  This fails when finding leading "ZONETYPE" for example!!!
 //  What I need to do is to find a better trap for this
 // 
-// 
-            if( idone_zone == 0 ) {
-               buf[0] = ' '; buf[1] = ' '; buf[2] = ' '; buf[3] = ' ';
+            if( strlen( buf ) >= 8 ) {
+               if( strncasecmp( buf, "ZONETYPE", 8 ) == 0 ) {
+
+               } else {
+                  // increment termination condition variable
+                  ++idone_zone;
+               }
             }
-            // increment termination condition variable
-            ++idone_zone;
+
             // will not parse new components
             if( idone_zone > 1) {
                iparse_line = 0;
