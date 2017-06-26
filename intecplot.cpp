@@ -264,7 +264,7 @@ int inTec_Zone::ParseKeywords( char *buf )
    char *s=data, *es=NULL;
    size_t n=0;
    while( n <= isize ) {
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
       printf(" (key: %d, quote: %d)  ", ikey,iquote);
       printf("  %c   s: %c   ", data[n],s[0]);
   //  printf("  %c   s: %c    (key: %d, quote: %d)  ", data[n],s[0],ikey,iquote);
@@ -298,7 +298,7 @@ int inTec_Zone::ParseKeywords( char *buf )
             // we are moving to the second stage
             es = &( data[n] );
             ikey = 2;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (equal sign) ");
 #endif
          } else if( ikey == 2 ) {
@@ -306,7 +306,7 @@ int inTec_Zone::ParseKeywords( char *buf )
          } else if( ikey == 3 ) {
             if( iquote == 1 || ibra == 1 || ipar == 1 ) {
                // we continue parsing because the quote/bracket/paren. is open
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                printf(" (equal sign in key=3) ");
 #endif
             } else {
@@ -322,7 +322,7 @@ int inTec_Zone::ParseKeywords( char *buf )
          } else if( ikey == 2 ) {
             // entering data section of this keyword
             ikey = 3;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (start data of keyword) ");
 #endif
             // open quote
@@ -354,7 +354,7 @@ int inTec_Zone::ParseKeywords( char *buf )
             } else {
                ikey = 0;
                iparse = 1;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                printf(" (parsing ending) ");
 #endif
             }
@@ -364,7 +364,7 @@ int inTec_Zone::ParseKeywords( char *buf )
                ierror = 1; printf("This is in error! (5b) (empty keyword) ");
          } else {
             // termination of parsing everything
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (parsing ending) ");
 #endif
          }
@@ -379,13 +379,13 @@ int inTec_Zone::ParseKeywords( char *buf )
             ikey = 3;
             // ...with an open bracket
             ibra = 1;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (start data of keyword with bracket) ");
 #endif
          } else {
             // simply open bracket
             ibra = 1;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (open bracket) ");
 #endif
          }
@@ -401,7 +401,7 @@ int inTec_Zone::ParseKeywords( char *buf )
             } else {
                // simply close bracket
                ibra = 0;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                printf(" (close bracket) ");
 #endif
             }
@@ -417,13 +417,13 @@ int inTec_Zone::ParseKeywords( char *buf )
             ikey = 3;
             // ...with an open parenthesis
             ipar = 1;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (start data of keyword with paren.) ");
 #endif
          } else {
             // simply open parenthesis
             ipar = 1;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (open paren.) ");
 #endif
          }
@@ -439,7 +439,7 @@ int inTec_Zone::ParseKeywords( char *buf )
             } else {
                // simply close parenthesis
                ipar = 0;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                printf(" (close paren.) ");
 #endif
             }
@@ -453,7 +453,7 @@ int inTec_Zone::ParseKeywords( char *buf )
             if( CheckCharForNum( data[n] ) == 1 ) {
                // terminate parsing immediately; the zone header must be done
                free( data );
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
                printf(" (numerical string) \n");
 #endif
                return( -100 );
@@ -461,13 +461,13 @@ int inTec_Zone::ParseKeywords( char *buf )
 
             // encountered keyword
             ikey = 1;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (start keyword) ");
 #endif
          } else if( ikey == 2 ) {
             // entering data section of this keyword
             ikey = 3;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
             printf(" (start data of keyword) ");
 #endif
          }
@@ -475,7 +475,7 @@ int inTec_Zone::ParseKeywords( char *buf )
 
       // provide some output
       if( iparse == 1 ) {
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
          printf(" (parsing now)");
 #endif
          data[n+0] = '\0';//HACK
@@ -488,7 +488,7 @@ int inTec_Zone::ParseKeywords( char *buf )
       }
 
       ++n;
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
       printf("\n");
 #endif
    }
@@ -1470,7 +1470,7 @@ int inTec_Zone::ConsistencyCheck (void )
 
 int inTec_Zone::ParseNumericData( char *buf )
 {
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
    printf(" i Parsing numeric data \n");
 #endif
    // set the numeric parsing state when we first try to parse data
@@ -2022,7 +2022,7 @@ int inTec_File::ParseLoop()
 
 int inTec_File::IdentifyComponent( char *buf )
 {
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
    printf(" i Inside \"IdentifyComponent()\" \n");
 #endif
 
@@ -2251,7 +2251,7 @@ int inTec_File::ParseComponent_Zone()
 
       // information about the position in the file
       ipos = ftell( fp );
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
       printf(" i Position in file at %ld bytes, line %ld \n", ipos, iline+1 );
 #endif
 
@@ -2332,7 +2332,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
             }
          }
       } else {
-#ifdef _DEBUG_
+#ifdef _DEBUG2_
          printf(" --- The line is part of the Zone component \n");
 #endif
          iparse_line = 1;
@@ -2359,6 +2359,9 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
                // we have parsed through possibly multiple "zone" lines...
                // ...and encountered data
                igot_head = 1;
+#ifdef _DEBUG_
+               printf(" i Finished reading zone header (at line: %ld)\n",iline);
+#endif
 
                // rewind this line
                iret = fseek( fp, ipos, SEEK_SET );
@@ -2387,8 +2390,8 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
                return(4);
             }
          } else { // we have parsed the header completely; now parsing data
-#ifdef _DEBUG_
-            printf(" --- Collecting Zone data \n");
+#ifdef _DEBUG2_
+            printf(" --- Collecting zone data \n");
 #endif
             // push the buffer to the zone for data extraction
             // (we must have set the zone to a data-reading state earlier)
@@ -2628,7 +2631,7 @@ int inTec_File::ParseComponent_Geometry()
 
       // information about the position in the file
       ipos = ftell( fp );
-#ifdef _DEBUG2_
+#ifdef _DEBUG_
       printf(" i Position in file at %ld bytes, line %ld \n", ipos, iline+1 );
 #endif
 
