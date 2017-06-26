@@ -106,6 +106,7 @@ inTec_Zone::~inTec_Zone( )
    printf(" i Zone object deconstructed\n");
 #endif
 
+   // deallocate data arrays
    std::vector< double * > :: iterator dpi;
    for( dpi = var_vec.begin() ; dpi != var_vec.end() ; ++dpi ) {
       if( (*dpi) != NULL ) {
@@ -118,6 +119,7 @@ inTec_Zone::~inTec_Zone( )
    }
    var_vec.clear();
 
+   // deallocate connectivity array
    if( icon != NULL ) free( icon );
 
 #ifdef _DEBUG_
@@ -144,7 +146,9 @@ inTec_Zone::~inTec_Zone( )
       printf("      ==> %d location %d \n", (*it).first, (*it).second );
    }
 #endif
+   ivar_loc.clear();
 
+   // drop T-keyword string
    if( tkey != NULL ) free( tkey );
 }
 
@@ -1478,6 +1482,9 @@ int inTec_Zone::ParseNumericData( char *buf )
       iparse_num = 1;      // indicates that we are begining to parse data
    } else if( iparse_num == 2 ) {
       iparse_num = 3;
+#ifdef _DEBUG_
+   printf(" i Switched to parsing connectivity data \n");
+#endif
    } else {
       // now that the check completed; reset bounds?????
    }
@@ -1841,7 +1848,7 @@ inTec_File::~inTec_File()
    variables.clear();
    strings.clear();
 
-#ifdef _DEBUG2_
+#ifdef _DEBUG_
    printf(" i Number of variables after clear %ld \n", variables.size());
    printf(" i Number of strings after clear %ld \n", strings.size());
 #endif
@@ -1957,7 +1964,7 @@ int inTec_File::ParseLoop()
       ic = inUtils_ReadTextline( &ibuf_size, &buf, fp );
       //// check for errors (negative numbers)
 #ifdef _DEBUG3_
-      printf("IC= %d, STRING: \"%s\"\n", ic, buf );//HACK
+      printf("IC= %d, STRING: \"%s\"\n", ic, buf );
 #endif
 
       // copy the string
@@ -2420,13 +2427,13 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
    --iline;
 //----------
 
-zone->Dump( (const char *) "crap.dat" );
+//zone->Dump( (const char *) "crap.dat" );
 // temporarily drop the zone object
 #ifdef _DEBUG_
 printf("HACK dropping the zone object\n");
 delete zone; //HACK
 #endif
-  printf("EXITING PREMATURELY IN ParseComponent_Zone() \n");exit(1);//HACK
+//printf("EXITING PREMATURELY IN ParseComponent_Zone() \n");exit(1);//HACK
 
 #ifdef _DEBUG_
    printf(" i *** Skipping parsing of ZONE component *** \n");
