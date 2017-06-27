@@ -2221,8 +2221,8 @@ int inTec_File::ParseComponent_HeaderVariables( char *buf )
    // variables from the file; we will deal with this later...)
    if( variables.size() > 0 ) {
       printf(" i Encountered an extra variables line in the file \n");
-      printf(" --- For now we simply ignore it and hope for the best!n");
-      printf("     (We hope that the number of variables does not change!)\n");
+      printf(" --- For now we simply ignore it and hope for the best \n");
+      printf("     (We hope that the number of variables does not change!) \n");
       return(100);
       // Should the number of variables be the same as previously (very likely),
       // there will be no problem parsing other zones. But if we wanted to be
@@ -2531,15 +2531,18 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
    --iline;
 
 
-printf("GOT HERE (zone istate=%d) \n",zone->GetState());
+#ifdef _DROP_ZONE_
+//printf("GOT HERE (zone istate=%d) \n",zone->GetState());
   zone->Dump( (const char *) "crap.dat" );
 #ifdef _DEBUG_
 // temporarily drop the zone object
   printf("HACK dropping the zone object\n");
-//delete zone; //HACK
+  delete zone;
+#endif
+#else
+  // add zone pointer to the file's zones container
   zones.push_back( zone );
 #endif
-//printf("EXITING PREMATURELY IN ParseComponent_Zone() \n");exit(1);//HACK
 
 #ifdef _DEBUG_
 // printf(" i *** Skipping parsing of ZONE component *** \n");
