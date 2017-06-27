@@ -26,6 +26,7 @@ class inTec_Zone {
    inTec_Zone( inTec_File* file_ );
    virtual ~inTec_Zone();
 
+   int GetState( void ) const;
    long GetPositionInFile( void ) const;
    int SetPositionInFile( long ipos_ );
    long GetDataPositionInFile( void ) const;
@@ -37,11 +38,13 @@ class inTec_Zone {
 
    int Dump( const char *file ); 
 
+   void clear();
+
  protected:
    void InitKeywords();
    int istate;
    char *tkey;
-   int iordered,ietype,idatapack;
+   int ietype,idatapack;
    int num_var, parent_zone, nv;
    unsigned long im,jm,km,nodes,elems;
    std::map< int, int > ivar_loc;

@@ -62,7 +62,6 @@ inTec_Zone::inTec_Zone( inTec_File* file_ )
 
    // keyword-based variables
    tkey = NULL;
-   iordered = -1;
    ietype = -1;
    idatapack = -1;
    im = 0;
@@ -100,10 +99,24 @@ inTec_Zone::inTec_Zone( inTec_File* file_ )
    }
 }
 
-inTec_Zone::~inTec_Zone( )
+inTec_Zone::~inTec_Zone()
 {
 #ifdef _DEBUG_
    printf(" i Zone object deconstructed\n");
+#endif
+
+   clear();
+}
+
+int inTec_Zone::GetState() const
+{
+   return( istate );
+}
+
+void inTec_Zone::clear()
+{
+#ifdef _DEBUG_
+   printf(" i Zone object clearing\n");
 #endif
 
    // deallocate data arrays
@@ -150,6 +163,46 @@ inTec_Zone::~inTec_Zone( )
 
    // drop T-keyword string
    if( tkey != NULL ) free( tkey );
+
+
+   // initialize variables as if it were a fresh object
+   istate = 0;
+   ipos = 0;
+   ipos_data = 0;
+   ipos_conn = 0;
+
+   // keyword-based variables
+   tkey = NULL;
+   ietype = -1;
+   idatapack = -1;
+   im = 0;
+   jm = 0;
+   km = 0;
+   nodes = 0;
+   elems = 0;
+   nv = 0;
+   parent_zone = -1;
+
+   // old-style variables
+   iold_n = 0;
+   iold_e = 0;
+   iold_et = -1;
+   iold_f = -1;
+
+   // utility variables
+   iparse_num = 0;
+   node_cnt = 0;
+   elem_cnt = 0;
+   var_cnt = 0;
+   icon_cnt = 0;
+
+   InitKeywords();
+
+   file = NULL;
+   num_var = 0;
+   icon = NULL;
+   ncon = 0;
+   num_var = 0;
 }
 
 void inTec_Zone::InitKeywords()
@@ -688,7 +741,7 @@ int inTec_Zone::ManageInternals( void )
 #ifdef _DEBUG_
    printf(" i Inside ManageInternals() \n");
 #endif
-   int ierror=0,iret;
+   int ierror=0,iret=0;
 
    // processing individual keywords
    const char *string=NULL,*string2=NULL;
@@ -909,6 +962,8 @@ int inTec_Zone::ManageInternals( void )
 #ifdef _DEBUG_
       printf(" e Exiting ManageInternals() in error (return %d) \n",iret);
 #endif
+   } else {
+      istate = 2;    // implies a state of reading numerical values
    }
 
 /*
@@ -1480,6 +1535,8 @@ int inTec_Zone::ParseNumericData( char *buf )
    // set the numeric parsing state when we first try to parse data
    if( iparse_num == 0 ) {
       iparse_num = 1;      // indicates that we are begining to parse data
+   } else if( iparse_num == 1 ) {
+
    } else if( iparse_num == 2 ) {
       iparse_num = 3;
 #ifdef _DEBUG_
@@ -1544,7 +1601,12 @@ int inTec_Zone::ParseNumericData( char *buf )
 #ifdef _DEBUG_
                   printf(" --- Parsing of variable data ending \n");
 #endif
-                  iparse_num = 2;
+                  if( ietype != ORDERED ) {
+                     iparse_num = 2;
+                  } else {
+                     // set state of zone to "loaded and ready" (ordered zone)
+                     istate = 3;
+                  }
                }
 
                var_cnt = 0;
@@ -1575,10 +1637,15 @@ int inTec_Zone::ParseNumericData( char *buf )
             // termination condition
             if( var_cnt == num_var ) {
                var_cnt = 0;
-               iparse_num = 2;
 #ifdef _DEBUG_
                printf(" --- Parsing of numeric data ending \n");
 #endif
+               if( ietype != ORDERED ) {
+                  iparse_num = 2;
+               } else {
+                  // set state of zone to "loaded and ready" (ordered zone)
+                  istate = 3;
+               }
             }
          }
 
@@ -1588,7 +1655,7 @@ int inTec_Zone::ParseNumericData( char *buf )
    // parse segments separated by spaces (expecting connectivity in one line)
    if( iparse_num == 3 ) {
       unsigned long n1,n2,n3,n4,n5,n6,n7,n8;
-      int ic;
+      int ic=0;
 
       if( ietype == FETRIANGLE ) 
          ic = sscanf( buf, "%ld %ld %ld", &n1,&n2,&n3 );
@@ -1624,6 +1691,8 @@ int inTec_Zone::ParseNumericData( char *buf )
          icon_cnt += 1;
       }
 
+      // indicate that the zone has been filled with data and is ready
+      if( icon_cnt == elems ) istate = 3;
    }
 
    return(0);
@@ -1632,7 +1701,18 @@ int inTec_Zone::ParseNumericData( char *buf )
 
 int inTec_Zone::Dump( const char *filename )
 {
-   if( file == NULL ) return(1);
+   if( filename == NULL ) {
+#ifdef _DEBUG_
+      printf(" e You need to supply a non-null filename string \n");
+#endif
+      return(1);
+   }
+   if( istate != 3 ) {
+#ifdef _DEBUG_
+      printf(" e Zone is in hte wrong state: %d \n", istate );
+#endif
+      return(2);
+   }
 
 #ifdef _DEBUG_
    printf(" i Dumping zone to file \"%s\"\n", filename);
@@ -2427,7 +2507,8 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
    --iline;
 //----------
 
-//zone->Dump( (const char *) "crap.dat" );
+printf("GOT HERE (zone istate=%d) \n",zone->GetState());
+  zone->Dump( (const char *) "crap.dat" );
 // temporarily drop the zone object
 #ifdef _DEBUG_
 printf("HACK dropping the zone object\n");
