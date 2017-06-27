@@ -1548,7 +1548,7 @@ int inTec_Zone::ParseNumericData( char *buf )
 
 
 #ifdef _DEBUG2_
-   printf(" STRING: --->|%s|<---\n", buf );
+   printf(" --- String to parse: --->|%s|<---\n", buf );
 #endif
 
    // clean-up all fortran double-precision formatting
@@ -1709,7 +1709,7 @@ int inTec_Zone::Dump( const char *filename )
    }
    if( istate != 3 ) {
 #ifdef _DEBUG_
-      printf(" e Zone is in hte wrong state: %d \n", istate );
+      printf(" e Zone is in the wrong state: %d \n", istate );
 #endif
       return(2);
    }
@@ -1908,6 +1908,13 @@ inTec_File::~inTec_File()
    printf(" i File object deconstructing \"%s\"\n", name);
 #endif
 
+   // drop all contents of all zones attached to this file
+   for(int n=0;n<zones.size();++n) {
+#ifdef _DEBUG_
+      printf(" --- Clearing zone %d \n", n );
+#endif
+      zones[n]->clear();
+   }
    zones.clear();
 
 #ifdef _DEBUG_
@@ -2305,8 +2312,6 @@ int inTec_File::ParseComponent_Zone()
       return(1);
    }
 
-#warning "WORKING HERE"
-//----------
    // seek back to the begining of the line that got us here so we can re-parse
    iret = fseek( fp, ipos, SEEK_SET );
    if( iret != 0 ) {
@@ -2505,19 +2510,20 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
       return(3);
    }
    --iline;
-//----------
+
 
 printf("GOT HERE (zone istate=%d) \n",zone->GetState());
   zone->Dump( (const char *) "crap.dat" );
-// temporarily drop the zone object
 #ifdef _DEBUG_
-printf("HACK dropping the zone object\n");
-delete zone; //HACK
+// temporarily drop the zone object
+//printf("HACK dropping the zone object\n");
+//delete zone; //HACK
+zones.push_back( zone );
 #endif
 //printf("EXITING PREMATURELY IN ParseComponent_Zone() \n");exit(1);//HACK
 
 #ifdef _DEBUG_
-   printf(" i *** Skipping parsing of ZONE component *** \n");
+// printf(" i *** Skipping parsing of ZONE component *** \n");
    // we do this by returning control to the main parsing loop
 #endif
 
@@ -2589,7 +2595,7 @@ int inTec_File::ParseComponent_Text()
       int iparse_line=1;    // default is to parse the line
       iret = IdentifyComponent( buf );
 #ifdef _DEBUG3_
-//printf("FOUND iret=%d idone_text=%d \n", iret,idone_text);//HACK
+printf("FOUND iret=%d idone_text=%d \n", iret,idone_text);
 #endif
       // check if we have jumped to a new component under certain conditions...
       if( iret > 0 ) {             // we found a component
@@ -2742,7 +2748,7 @@ int inTec_File::ParseComponent_Geometry()
       int iparse_line=1;    // default is to parse the line
       iret = IdentifyComponent( buf );
 #ifdef _DEBUG3_
-//printf("FOUND iret=%d idone_geom=%d \n", iret,idone_geom);//HACK
+printf("FOUND iret=%d idone_geom=%d \n", iret,idone_geom);
 #endif
       // check if we have jumped to a new component under certain conditions...
       if( iret > 0 ) {             // we found a component

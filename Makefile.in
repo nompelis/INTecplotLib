@@ -1,11 +1,11 @@
 ### path where "INutils" library is found
-LIB_DIR = ./c/INutils
+LIB_DIR = /project/nompelis/parallel_v1.5
 
 ### compilers and options
 CC = gcc
-COPTS = -g -Wall -fPIC  -O0
+COPTS = -g -Wall -fPIC  -O2
 CXX = g++
-CXXOPTS = -g -Wall -fPIC  -O0
+CXXOPTS = -g -Wall -fPIC  -O2
 
 #CC = pgcc
 #COPTS = -fPIC -g -Mbounds
@@ -13,5 +13,5 @@ CXXOPTS = -g -Wall -fPIC  -O0
 #CXXOPTS = -fPIC -g -Mbounds
 
 ### debug level
-DEBUG = -D   _DEBUG_
+DEBUG = -D   _DEBUG_  -D NO_DEBUG2_
 

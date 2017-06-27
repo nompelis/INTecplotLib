@@ -9,13 +9,16 @@
 int main()
 {
    char *fname = (char *) "data.dat";
-   inTec_File f( fname );
 
+//while(1) {
+
+   inTec_File f( fname );
    f.OpenRead();
    f.Parse();
    f.Close();
 
-
+  printf("========================= LOOP ==========================\n");
+//}
 
    return(0);
 }
