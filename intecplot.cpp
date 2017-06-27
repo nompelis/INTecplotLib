@@ -1912,11 +1912,10 @@ inTec_File::~inTec_File()
 #ifdef _DEBUG_
       printf(" --- Number of zones to clear: %d \n", (int) zones.size() );
 #endif
-   for(int n=0;n<zones.size();++n) {
+   for(unsigned int n=0;n<zones.size();++n) {
 #ifdef _DEBUG_
       printf(" --- Clearing zone %d \n", n );
 #endif
-   // zones[n]->clear();
       delete zones[n];
    }
    zones.clear();
@@ -2217,6 +2216,22 @@ int inTec_File::ParseComponent_HeaderVariables( char *buf )
 #ifdef _DEBUG_
    printf(" i Inside \"ParseComponent_HeaderVariables\" \n");
 #endif
+   // make sure we had not picked up a variables line earlier
+   // (this is a possibiliy, where we may have to pick a mixed number of
+   // variables from the file; we will deal with this later...)
+   if( variables.size() > 0 ) {
+      printf(" i Encountered an extra variables line in the file \n");
+      printf(" --- For now we simply ignore it and hope for the best!n");
+      printf("     (We hope that the number of variables does not change!)\n");
+      return(100);
+      // Should the number of variables be the same as previously (very likely),
+      // there will be no problem parsing other zones. But if we wanted to be
+      // very general about this treatment, we would pick up the _new_ variables
+      // in a new container, compare the ones that are existing ones, and have a
+      // way of parsing all the new ones but maintaining only the old ones.
+      // This sounds easier than it is, especially with the current framework.
+   }
+
    size_t isize=0;
    while( buf[isize] != '\0' && buf[isize] != '\n' ) ++isize;
 
