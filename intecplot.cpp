@@ -1909,11 +1909,15 @@ inTec_File::~inTec_File()
 #endif
 
    // drop all contents of all zones attached to this file
+#ifdef _DEBUG_
+      printf(" --- Number of zones to clear: %d \n", (int) zones.size() );
+#endif
    for(int n=0;n<zones.size();++n) {
 #ifdef _DEBUG_
       printf(" --- Clearing zone %d \n", n );
 #endif
-      zones[n]->clear();
+   // zones[n]->clear();
+      delete zones[n];
    }
    zones.clear();
 
@@ -2516,9 +2520,9 @@ printf("GOT HERE (zone istate=%d) \n",zone->GetState());
   zone->Dump( (const char *) "crap.dat" );
 #ifdef _DEBUG_
 // temporarily drop the zone object
-//printf("HACK dropping the zone object\n");
+  printf("HACK dropping the zone object\n");
 //delete zone; //HACK
-zones.push_back( zone );
+  zones.push_back( zone );
 #endif
 //printf("EXITING PREMATURELY IN ParseComponent_Zone() \n");exit(1);//HACK
 
