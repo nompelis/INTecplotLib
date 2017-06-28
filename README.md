@@ -14,7 +14,7 @@ objects, for example.
 
 2. Generate TecPlot-readable files with multiple zones.
 
-3. Manage and manipualte TecPlot data "zones" as data-objects that can be
+3. Manage and manipulate TecPlot data "zones" as data-objects that can be
 read dynamically as needed.
 
 
@@ -24,7 +24,7 @@ The motivation behind creating this library was sparked from the popularity
 of TecPlot, and by the need to be able to (primarily) read files that were
 generated with the intention that data objects be visualized by TecPlot.
 
-Unfortunetaly, in spite of its maturity as a software product, its popularity
+Unfortunately, in spite of its maturity as a software product, its popularity
 in the scientific community and its extremely wide and versatile functionality,
 TecPlot remains un-suitable for high-performance computing and visualization
 of very large datasets. The poor choice of using an internal binary format
@@ -38,14 +38,14 @@ package in academia and industry today.
 
 It is possible to author an add-on that is customizable to a particular data
 format that a high-end and demanding user desires. In this way, versatile
-data management can be performed to selectively visualizing data in dettached
+data management can be performed for selectively visualizing data in dettached
 regions of a particular zone. This versatility is something that I have not
-encountered as a software package, open or closed source, and authoring such
+encountered in a software package, open or closed source, and authoring such
 a package is certainly a difficult task that requires understanding how TecPlot
 add-ons interact with the software, engineering the data-reading and managemnt
 procedures, and creating an appropriate graphical UI. Some meta-data creation
 would also be necessary to address high-performance visualization concerns. The
-desired result would be to simply feed data to TecPlot such that it can be
+desired result would be to simply feed data to TecPlot such that they can be
 visualized, and more importantly annotated, for use in document publication.
 
 In addition to needing a dynamic data-reader for TecPlot zone objects for use
@@ -58,4 +58,11 @@ ADDITIONAL FUNCTIONALITY
 A summary of special features of this library will be included at a later time.
 
 
-IN 2017/06/26
+LIMITATIONS
+
+This library is not, at present, trageting .plt (native TecPlot binary) files.
+For this functionality look at this repository:
+https://github.com/tuxication/tecplot-binary-read
+
+
+IN 2017/06/28
