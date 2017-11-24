@@ -29,7 +29,7 @@ in the scientific community and its extremely wide and versatile functionality,
 TecPlot remains un-suitable for high-performance computing and visualization
 of very large datasets. The poor choice of using an internal binary format
 for compact data-storage of large datasets instead of something more versatile,
-such as the HDF5 data foramt, has not been addressed tp modernize the software.
+such as the HDF5 data format, has not been addressed to modernize the software.
 As a result, the present HDF5 dataset reader that is shipped with TecPlot is
 an un-documented orphan "add-on" and is largely un-usable. Some competing, open
 source software packages, such as ParaView, are trying to address these issues
