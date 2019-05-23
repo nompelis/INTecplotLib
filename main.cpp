@@ -4,7 +4,6 @@
 
 #include "intecplot.h"
 
-#include "utils.h" // HACK
 
 int main()
 {
