@@ -1,6 +1,6 @@
 ### path where "INutils" library is found
-LIB_DIR = /project/nompelis/parallel_v1.5
-LIB_DIR = ../../INutils
+### (This has been changed to use a lean version of the library in here.)
+LIB_DIR = .
 
 ### compilers and options
 CC = gcc

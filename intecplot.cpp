@@ -40,6 +40,7 @@
 
 #ifdef __cplusplus
 extern "C" {
+#endif
 
 
 enum inTecFile_Component {
@@ -2894,6 +2895,7 @@ const char* inTec_File::GetVariableName( int nvar_ ) const
 }
 
 
+#ifdef __cplusplus
 }
 #endif
 

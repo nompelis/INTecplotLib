@@ -44,6 +44,7 @@
 
 #ifdef __cplusplus
 extern "C" {
+#endif
 
 
 //
@@ -155,6 +156,7 @@ class inTec_File {
 
 
 
+#ifdef __cplusplus
 }
 #endif
 
