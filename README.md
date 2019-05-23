@@ -77,5 +77,6 @@ to see how accessors and setters operate on the data.
 
 
 IN 2017/06/28 (initial creation)
+
 IN 2019/05/23 (inclusion of "utils" and changes to make this library standalone)
 
