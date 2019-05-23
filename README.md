@@ -65,4 +65,17 @@ For this functionality look at this repository:
 https://github.com/tuxication/tecplot-binary-read
 
 
-IN 2017/06/28
+HOW TO USE
+
+When originally released, this code did not compile without using a special
+library that was not released alongside it, and was meant to be a studying tool.
+As of the latest changes, the library compiles to a dynamically linked library
+(.so file on Unix-like systems) and can be used by other C++ programs, just
+as the main.cpp driver demonstrates. Simply look at the class created for a
+TecPlot file, how it is opened and handled. Look at the methods of the class
+to see how accessors and setters operate on the data.
+
+
+IN 2017/06/28 (initial creation)
+IN 2019/05/23 (inclusion of "utils" and changes to make this library standalone)
+
