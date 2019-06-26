@@ -2895,6 +2895,16 @@ const char* inTec_File::GetVariableName( int nvar_ ) const
 }
 
 
+inTec_Zone* inTec_File::GetZone( int i )
+{
+   inTec_Zone *ptr = NULL;
+
+   ptr = zones[ i ];
+
+   return( ptr );
+}
+
+
 #ifdef __cplusplus
 }
 #endif

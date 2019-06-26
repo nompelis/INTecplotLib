@@ -127,6 +127,7 @@ class inTec_File {
    FILE* GetFP( void ) const;
    int GetNumVariables( void ) const;
    const char* GetVariableName( int nvar_ ) const;
+   inTec_Zone* GetZone( int i );
 
  protected:
    int ParseLoop();

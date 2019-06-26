@@ -5,9 +5,9 @@
 #include "intecplot.h"
 
 
-int main()
+int main( int argc, char *argv[] )
 {
-   char *fname = (char *) "data.dat";
+   char *fname = (char *) (argv[1]);
 
 //while(1) {
 
@@ -15,6 +15,7 @@ int main()
    f.OpenRead();
    f.Parse();
    f.Close();
+   inTec_Zone *z = f.GetZone( 1 );
 
   printf("========================= LOOP ==========================\n");
 //}
