@@ -1,5 +1,5 @@
 /******************************************************************************
- Copyright (c) 2017, Ioannis Nompelis
+ Copyright (c) 2017-2019, Ioannis Nompelis
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without any
@@ -107,6 +107,9 @@ class inTec_Zone {
    unsigned long node_cnt, elem_cnt;
    int var_cnt;
    unsigned long icon_cnt;
+
+   // various methods that act as helpers
+   int GetElementNodes( long n, int & no, long icon_[] );
 };
 
 

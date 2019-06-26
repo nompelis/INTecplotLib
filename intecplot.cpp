@@ -1,5 +1,5 @@
 /******************************************************************************
- Copyright (c) 2017, Ioannis Nompelis
+ Copyright (c) 2017-2019, Ioannis Nompelis
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without any
@@ -1910,6 +1910,37 @@ int inTec_Zone::Dump( const char *filename )
 #ifdef _DEBUG_
    printf(" i Finished dumping zone to file \"%s\"\n", filename);
 #endif
+   return(0);
+}
+
+
+
+
+int inTec_Zone::GetElementNodes( long n, int & ik, long *icon_ )
+{
+   long off,k;
+
+
+   if( ietype == FELINESEG ) {
+      ik = 2;
+   } else if( ietype == FETRIANGLE ) {
+      ik = 3;
+   } else if( ietype == FETETRAHEDRON ) {
+      ik = 4;
+   } else if( ietype == FEQUADRILATERAL ) {
+      ik = 4;
+   } else if( ietype == FEBRICK ) {
+      ik = 8;
+   } else {
+      return(1);
+   }
+
+   off = ik*(n - 1);
+
+   for(k=0;k<ik;++k) {
+      icon_[k] = icon[off + k];
+   }
+
    return(0);
 }
 
