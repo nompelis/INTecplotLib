@@ -1931,6 +1931,503 @@ int inTec_Zone::Dump( const char *filename )
 
 
 
+int inTec_Zone::WriteFileSTL( char filename_[], double rdir ) const
+{
+   FILE *fp;
+   unsigned char type, ix,iy,iz;
+   double *xd,*yd,*zd;
+
+   // make sure we are working with a 3D file (has {x,y,z variables)
+   /// (This is to be filled... For now assume conventional ordering of vars.)
+   ix = 0;
+   xd = var_vec[ ix ];
+   iy = 1;
+   yd = var_vec[ iy ];
+   iz = 2;
+   zd = var_vec[ iz ];
+
+   // determine the type of extraction to make
+   if( ietype == ORDERED ) {
+      if( im == 1 ) {
+         if( jm <= 0 || km <= 0 ) {
+            printf(" e This zone is not suitable for extraction \n");
+         printf("   Sizes are im= %ld,jm= %ld, km=%ld \n",im,jm,km);
+            return(1);
+         }
+         type = 'i';
+      } else if( jm == 1 ) {
+         if( im <= 0 || km <= 0 ) {
+            printf(" e This zone is not suitable for extraction \n");
+         printf("   Sizes are im= %ld,jm= %ld, km=%ld \n",im,jm,km);
+            return(1);
+         }
+         type = 'j';
+      } else if( km == 1 ) {
+         if( im <= 0 || jm <= 0 ) {
+            printf(" e This zone is not suitable for extraction \n");
+         printf("   Sizes are im= %ld,jm= %ld, km=%ld \n",im,jm,km);
+            return(1);
+         }
+         type = 'k';
+      } else {
+         printf(" e This zone is not suitable for extraction \n");
+         printf("   Sizes are im= %ld,jm= %ld, km=%ld \n",im,jm,km);
+         return(1);
+      }
+   } else {
+      printf(" e Conversion to STL is only possible for structured zones\n");
+      printf("   This will change in the future...\n");
+      return(1);
+   }
+
+
+   // open the file
+   fp = fopen( filename_, "w" );
+   if( fp == NULL ) {
+      printf(" e Cannot note open file \"%s\" to write STL file \n",filename_);
+      return(10);
+   }
+
+   fprintf( fp, "solid surface\n");
+
+
+   // perform the extraction for the particular type of zone
+   unsigned long i,j,k,n1,n2,n3,n4;
+   double xn[3],xv[3][3],ss;
+   switch( type ) {
+
+    case('i'):
+      for(k=0;k<km-1;++k) {
+      for(j=0;j<jm-1;++j) {
+         n1 = (k  )*jm + j;
+         n2 = (k  )*jm + j+1;
+         n3 = (k+1)*jm + j;
+         n4 = (k+1)*jm + j+1;
+
+         xv[0][0] = xd[n1];
+         xv[0][1] = yd[n1];
+         xv[0][2] = zd[n1];
+
+         xv[1][0] = xd[n2];
+         xv[1][1] = yd[n2];
+         xv[1][2] = zd[n2];
+
+         xv[2][0] = xd[n3];
+         xv[2][1] = yd[n3];
+         xv[2][2] = zd[n3];
+
+         xn[0] =  (xv[ 1 ][1] - xv[ 0 ][1]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 -(xv[ 2 ][1] - xv[ 0 ][1]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[1] = -(xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 +(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[2] =  (xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][1] - xv[ 0 ][1])
+                 -(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][1] - xv[ 0 ][1]);
+         ss = 1.0/sqrt( xn[0]*xn[0] + xn[1]*xn[1] + xn[2]*xn[2] );
+         xn[0] = xn[0]*ss * rdir;
+         xn[1] = xn[1]*ss * rdir;
+         xn[2] = xn[2]*ss * rdir;
+
+//   facet normal 1.433552e-015 -1.853368e-002 9.998283e-001
+//      outer loop
+//         vertex 7.094394e-001 1.247100e+000 1.216028e+000
+//         vertex 7.094394e-001 1.246683e+000 1.216023e+000
+//         vertex 7.782733e-001 1.246683e+000 1.216023e+000
+//      endloop
+//   endfacet
+
+         fprintf( fp, "  facet normal %12.9e %12.9e %12.9e \n",
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]) );
+         fprintf( fp, "   outer loop\n");
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]) );
+         fprintf( fp, "   endloop\n");
+         fprintf( fp, "  endfacet\n");
+
+
+         xv[0][0] = xd[n4];
+         xv[0][1] = yd[n4];
+         xv[0][2] = zd[n4];
+
+         fprintf( fp, "  facet normal %12.9e %12.9e %12.9e \n",
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]) );
+         fprintf( fp, "   outer loop\n");
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]) );
+         fprintf( fp, "   endloop\n");
+         fprintf( fp, "  endfacet\n");
+
+      }}
+    break;
+
+    case('j'):
+      for(i=0;i<im-1;++i) {
+      for(k=0;k<km-1;++k) {
+         n1 = (k  )*im + i;
+         n2 = (k  )*im + i+1;
+         n3 = (k+1)*im + i;
+         n4 = (k+1)*im + i+1;
+
+         xv[0][0] = xd[n1];
+         xv[0][1] = yd[n1];
+         xv[0][2] = zd[n1];
+
+         xv[1][0] = xd[n2];
+         xv[1][1] = yd[n2];
+         xv[1][2] = zd[n2];
+
+         xv[2][0] = xd[n3];
+         xv[2][1] = yd[n3];
+         xv[2][2] = zd[n3];
+
+         xn[0] =  (xv[ 1 ][1] - xv[ 0 ][1]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 -(xv[ 2 ][1] - xv[ 0 ][1]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[1] = -(xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 +(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[2] =  (xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][1] - xv[ 0 ][1])
+                 -(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][1] - xv[ 0 ][1]);
+         ss = 1.0/sqrt( xn[0]*xn[0] + xn[1]*xn[1] + xn[2]*xn[2] );
+         xn[0] = xn[0]*ss * rdir;
+         xn[1] = xn[1]*ss * rdir;
+         xn[2] = xn[2]*ss * rdir;
+
+         fprintf( fp, "  facet normal %12.9e %12.9e %12.9e \n",
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]) );
+         fprintf( fp, "   outer loop\n");
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]) );
+         fprintf( fp, "   endloop\n");
+         fprintf( fp, "  endfacet\n");
+
+
+         xv[0][0] = xd[n4];
+         xv[0][1] = yd[n4];
+         xv[0][2] = zd[n4];
+
+         fprintf( fp, "  facet normal %12.9e %12.9e %12.9e \n",
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]) );
+         fprintf( fp, "   outer loop\n");
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]) );
+         fprintf( fp, "   endloop\n");
+         fprintf( fp, "  endfacet\n");
+
+      }}
+    break;
+
+    case('k'):
+      for(j=0;j<jm-1;++j) {
+      for(i=0;i<im-1;++i) {
+         n1 = (j  )*im + i;
+         n2 = (j  )*im + i+1;
+         n3 = (j+1)*im + i;
+         n4 = (j+1)*im + i+1;
+
+         xv[0][0] = xd[n1];
+         xv[0][1] = yd[n1];
+         xv[0][2] = zd[n1];
+
+         xv[1][0] = xd[n2];
+         xv[1][1] = yd[n2];
+         xv[1][2] = zd[n2];
+
+         xv[2][0] = xd[n3];
+         xv[2][1] = yd[n3];
+         xv[2][2] = zd[n3];
+
+         xn[0] =  (xv[ 1 ][1] - xv[ 0 ][1]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 -(xv[ 2 ][1] - xv[ 0 ][1]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[1] = -(xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 +(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[2] =  (xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][1] - xv[ 0 ][1])
+                 -(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][1] - xv[ 0 ][1]);
+         ss = 1.0/sqrt( xn[0]*xn[0] + xn[1]*xn[1] + xn[2]*xn[2] );
+         xn[0] = xn[0]*ss * rdir;
+         xn[1] = xn[1]*ss * rdir;
+         xn[2] = xn[2]*ss * rdir;
+
+         fprintf( fp, "  facet normal %12.9e %12.9e %12.9e \n",
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]) );
+         fprintf( fp, "   outer loop\n");
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]) );
+         fprintf( fp, "   endloop\n");
+         fprintf( fp, "  endfacet\n");
+
+
+         xv[0][0] = xd[n4];
+         xv[0][1] = yd[n4];
+         xv[0][2] = zd[n4];
+
+         fprintf( fp, "  facet normal %12.9e %12.9e %12.9e \n",
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]) );
+         fprintf( fp, "   outer loop\n");
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]) );
+         fprintf( fp, "    vertex %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]) );
+         fprintf( fp, "   endloop\n");
+         fprintf( fp, "  endfacet\n");
+
+      }}
+    break;
+
+   }
+
+
+   fprintf( fp, "endsolid\n");
+
+   // close file
+   fclose( fp );
+
+#ifdef _DEBUG_
+   fp = fopen( "STLdata.dat","w");
+   if( fp == NULL ) return(0);
+
+   fprintf( fp, "variables = x y z u v w \n");
+
+   switch( type ) {
+
+    case('i'):
+      fprintf( fp, "ZONE T=\"STL data\", N=%ld, E=%ld, ",
+               3*2*(km-1)*(jm-1),2*(km-1)*(jm-1) );
+      fprintf( fp, "     F=FEPOINT, ET=TRIANGLE\n");
+
+      for(k=0;k<km-1;++k) {
+      for(j=0;j<jm-1;++j) {
+         n1 = (k  )*jm + j;
+         n2 = (k  )*jm + j+1;
+         n3 = (k+1)*jm + j;
+         n4 = (k+1)*jm + j+1;
+
+         xv[0][0] = xd[n1];
+         xv[0][1] = yd[n1];
+         xv[0][2] = zd[n1];
+
+         xv[1][0] = xd[n2];
+         xv[1][1] = yd[n2];
+         xv[1][2] = zd[n2];
+
+         xv[2][0] = xd[n3];
+         xv[2][1] = yd[n3];
+         xv[2][2] = zd[n3];
+
+         xn[0] =  (xv[ 1 ][1] - xv[ 0 ][1]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 -(xv[ 2 ][1] - xv[ 0 ][1]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[1] = -(xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 +(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[2] =  (xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][1] - xv[ 0 ][1])
+                 -(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][1] - xv[ 0 ][1]);
+         ss = 1.0/sqrt( xn[0]*xn[0] + xn[1]*xn[1] + xn[2]*xn[2] );
+         xn[0] = xn[0]*ss * rdir;
+         xn[1] = xn[1]*ss * rdir;
+         xn[2] = xn[2]*ss * rdir;
+
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+
+         xv[0][0] = xd[n4];
+         xv[0][1] = yd[n4];
+         xv[0][2] = zd[n4];
+
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+
+      }}
+
+      i = 0;
+      for(k=0;k<km-1;++k) {
+      for(j=0;j<jm-1;++j) {
+         fprintf( fp, "  %ld %ld %ld \n",i+1,i+2,i+3);
+         i = i+3;
+         fprintf( fp, "  %ld %ld %ld \n",i+1,i+2,i+3);
+         i = i+3;
+      }}
+    break;
+
+    case('j'):
+      fprintf( fp, "ZONE T=\"STL data\", N=%ld, E=%ld, ",
+               3*2*(im-1)*(km-1),2*(im-1)*(km-1) );
+      fprintf( fp, "     F=FEPOINT, ET=TRIANGLE\n");
+
+      for(i=0;i<im-1;++i) {
+      for(k=0;k<km-1;++k) {
+         n1 = (k  )*im + i;
+         n2 = (k  )*im + i+1;
+         n3 = (k+1)*im + i;
+         n4 = (k+1)*im + i+1;
+
+         xv[0][0] = xd[n1];
+         xv[0][1] = yd[n1];
+         xv[0][2] = zd[n1];
+
+         xv[1][0] = xd[n2];
+         xv[1][1] = yd[n2];
+         xv[1][2] = zd[n2];
+
+         xv[2][0] = xd[n3];
+         xv[2][1] = yd[n3];
+         xv[2][2] = zd[n3];
+
+         xn[0] =  (xv[ 1 ][1] - xv[ 0 ][1]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 -(xv[ 2 ][1] - xv[ 0 ][1]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[1] = -(xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 +(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[2] =  (xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][1] - xv[ 0 ][1])
+                 -(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][1] - xv[ 0 ][1]);
+         ss = 1.0/sqrt( xn[0]*xn[0] + xn[1]*xn[1] + xn[2]*xn[2] );
+         xn[0] = xn[0]*ss * rdir;
+         xn[1] = xn[1]*ss * rdir;
+         xn[2] = xn[2]*ss * rdir;
+
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+
+         xv[0][0] = xd[n4];
+         xv[0][1] = yd[n4];
+         xv[0][2] = zd[n4];
+
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+
+      }}
+      j = 0;
+      for(i=0;i<im-1;++i) {
+      for(k=0;k<km-1;++k) {
+         fprintf( fp, "  %ld %ld %ld \n",j+1,j+2,j+3);
+         j = j+3;
+         fprintf( fp, "  %ld %ld %ld \n",j+1,j+2,j+3);
+         j = j+3;
+      }}
+    break;
+
+    case('k'):
+      fprintf( fp, "ZONE T=\"STL data\", N=%ld, E=%ld, ",
+               3*2*(im-1)*(jm-1),2*(im-1)*(jm-1) );
+      fprintf( fp, "     F=FEPOINT, ET=TRIANGLE\n");
+
+      for(j=0;j<jm-1;++j) {
+      for(i=0;i<im-1;++i) {
+         n1 = (j  )*im + i;
+         n2 = (j  )*im + i+1;
+         n3 = (j+1)*im + i;
+         n4 = (j+1)*im + i+1;
+
+         xv[0][0] = xd[n1];
+         xv[0][1] = yd[n1];
+         xv[0][2] = zd[n1];
+
+         xv[1][0] = xd[n2];
+         xv[1][1] = yd[n2];
+         xv[1][2] = zd[n2];
+
+         xv[2][0] = xd[n3];
+         xv[2][1] = yd[n3];
+         xv[2][2] = zd[n3];
+
+         xn[0] =  (xv[ 1 ][1] - xv[ 0 ][1]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 -(xv[ 2 ][1] - xv[ 0 ][1]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[1] = -(xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][2] - xv[ 0 ][2])
+                 +(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][2] - xv[ 0 ][2]);
+         xn[2] =  (xv[ 1 ][0] - xv[ 0 ][0]) * (xv[ 2 ][1] - xv[ 0 ][1])
+                 -(xv[ 2 ][0] - xv[ 0 ][0]) * (xv[ 1 ][1] - xv[ 0 ][1]);
+         ss = 1.0/sqrt( xn[0]*xn[0] + xn[1]*xn[1] + xn[2]*xn[2] );
+         xn[0] = xn[0]*ss * rdir;
+         xn[1] = xn[1]*ss * rdir;
+         xn[2] = xn[2]*ss * rdir;
+
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+
+         xv[0][0] = xd[n4];
+         xv[0][1] = yd[n4];
+         xv[0][2] = zd[n4];
+
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[1][0]), (float) (xv[1][1]), (float) (xv[1][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[2][0]), (float) (xv[2][1]), (float) (xv[2][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+         fprintf( fp, " %12.9e %12.9e %12.9e %12.9e %12.9e %12.9e \n",
+                  (float) (xv[0][0]), (float) (xv[0][1]), (float) (xv[0][2]),
+                  (float) (xn[0]), (float) (xn[1]), (float) (xn[2]));
+
+      }}
+      k = 0;
+      for(j=0;j<jm-1;++j) {
+      for(i=0;i<im-1;++i) {
+         fprintf( fp, "  %ld %ld %ld \n",k+1,k+2,k+3);
+         k = k+3;
+         fprintf( fp, "  %ld %ld %ld \n",k+1,k+2,k+3);
+         k = k+3;
+      }}
+    break;
+
+   }
+
+   fclose( fp );
+#endif
+
+   return(0);
+}
+
 
 int inTec_Zone::GetElementNodes( unsigned long n,
                                  int & ik, unsigned long *icon_ )
