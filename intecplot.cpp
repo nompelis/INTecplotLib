@@ -1520,14 +1520,16 @@ int inTec_Zone::ConsistencyCheck (void )
    }
 
    ierror = 0;
-   if( nodes > 0 && ietype == ORDERED ) {
-      printf(" e Number of nodes provided for an ordered zone \n");
-      ierror = 1;
-      iret += 1;
-   } else {
+   if( nodes > 0 ) {
+      if( ietype == ORDERED ) {
+         printf(" e Number of nodes provided for an ordered zone \n");
+         ierror = 1;
+         iret += 1;
+      } else {
 #ifdef _DEBUG_
-      printf(" --- ZONETYPE is not ORDERED while NODES is non-zero; good \n");
+         printf(" --- ZONETYPE is not ORDERED while NODES is non-zero; good\n");
 #endif
+      }
    }
 
 
