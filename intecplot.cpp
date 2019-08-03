@@ -903,24 +903,35 @@ int inTec_Zone::ManageInternals( void )
    // get a vertex and cell count
    size_t iv=0,ie=0;
 
-   // first try the ordered zone sizes; a sanity check is built-in...
-   if( ietype == ORDERED && im > 0 ) {
+   // first try the ordered zone sizes
+   if( ietype == ORDERED ) {
+      unsigned long imt,jmt,kmt;
+#ifdef _DEBUG_
+      printf(" i Internal var. \"ietype\" indicates it is an ORDERED zone \n");
+#endif
+      if( im - 1 == 0 ) { imt = 2; } else { imt = im; }
+      if( jm - 1 == 0 ) { jmt = 2; } else { jmt = jm; }
+      if( km - 1 == 0 ) { kmt = 2; } else { kmt = km; }
+
       if( jm > 0 ) {
          if( km > 0 ) {
             iv = (size_t) (im*jm*km);
-            ie = (size_t) ((im-1)*(jm-1)*(km-1));
+            ie = (size_t) ((imt-1)*(jmt-1)*(kmt-1));
          } else {
             iv = (size_t) (im*jm);
-            ie = (size_t) ((im-1)*(jm-1));
+            ie = (size_t) ((imt-1)*(jmt-1));
          }
       } else {
          iv = (size_t) im;
-         ie = (size_t) (im-1);
+         ie = (size_t) (imt-1);
       }
    }
 
-   // then try the unstruct. zone sizes; a sanity check is built-in...
-   if( ietype != ORDERED && nodes > 0 ) {
+   // then try the unstruct. zone sizes
+   if( ietype != ORDERED ) {
+#ifdef _DEBUG_
+      printf(" i Internal var. \"ietype\" indicates it is an unstr. zone \n");
+#endif
       iv = (size_t) nodes;
       ie = (size_t) elems;
    }
