@@ -109,7 +109,7 @@ class inTec_Zone {
    unsigned long icon_cnt;
 
    // various methods that act as helpers
-   int GetElementNodes( long n, int & no, long icon_[] );
+   int GetElementNodes( unsigned long n, int & no, unsigned long icon_[] );
 };
 
 

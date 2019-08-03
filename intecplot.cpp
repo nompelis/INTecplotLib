@@ -1919,7 +1919,8 @@ int inTec_Zone::Dump( const char *filename )
 
 
 
-int inTec_Zone::GetElementNodes( long n, int & ik, long *icon_ )
+int inTec_Zone::GetElementNodes( unsigned long n,
+                                 int & ik, unsigned long *icon_ )
 {
    long off,k;
 
