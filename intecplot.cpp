@@ -166,6 +166,7 @@ void inTec_Zone::clear()
 
    // deallocate connectivity array
    if( icon != NULL ) free( icon );
+   icon = NULL;
 
 #ifdef _DEBUG_
    printf(" i Keywords in zone (%ld) \n", keywords.size());
@@ -968,7 +969,9 @@ int inTec_Zone::ManageInternals( void )
       if( ietype == FEBRICK) ncon = 8;
 
       size_t isize = (size_t) (elems*ncon);
-      icon = (unsigned long *) malloc(isize*sizeof(unsigned long));
+      if( icon == NULL ) {
+         icon = (unsigned long *) malloc(isize*sizeof(unsigned long));
+      }
       if( icon == NULL ) ierror += 1;
    }
 
