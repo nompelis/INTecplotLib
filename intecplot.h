@@ -70,6 +70,8 @@ class inTec_Zone {
 
    int Dump( const char *file ); 
 
+   int WriteFileSTL( char filename_[], double rdir ) const;
+
    void clear();
 
  protected:
