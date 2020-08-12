@@ -1,5 +1,5 @@
 /******************************************************************************
- Copyright (c) 2017-2019, Ioannis Nompelis
+ Copyright (c) 2017-2020, Ioannis Nompelis
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without any
@@ -626,7 +626,7 @@ int inTec_Zone::HandleKeyword( char *buf )
       ++i;
    }
 #ifdef _DEBUG_
-   printf(" --- Equal size at character %ld \n", i );
+   printf(" --- Equal sign at character %ld \n", i );
 #endif
    s[i] = '\0';
 #ifdef _DEBUG_
@@ -641,6 +641,7 @@ int inTec_Zone::HandleKeyword( char *buf )
 #endif
 
    // trials to match keyword
+   // (determine size of keyword and do per-size compar.)
    int iret=1;
    if( key_size == 1 ) {
       if( strncasecmp( s, "T", 1 ) == 0 ) {
@@ -709,6 +710,10 @@ int inTec_Zone::HandleKeyword( char *buf )
    }
 
    if( key_size == 8 ) {
+      if( strncasecmp( s, "ELEMENTS", 8 ) == 0 ) {
+         keywords["ELEMENTS"] = p;
+         iret = 0;
+      }
       if( strncasecmp( s, "ZONETYPE", 8 ) == 0 ) {
          keywords["ZONETYPE"] = p;
          iret = 0;
@@ -844,14 +849,11 @@ int inTec_Zone::ManageInternals( void )
 
       }
 
-      if( is == 7 ) {
-         if( strncasecmp( string, "ELEMENTS", 7 ) == 0 ) {
+      if( is == 8 ) {
+         if( strncasecmp( string, "ELEMENTS", 8 ) == 0 ) {
             elems = (unsigned long) atol( string2 );
          }
 
-      }
-
-      if( is == 8 ) {
          if( strncasecmp( string, "ZONETYPE", 8 ) == 0 ) {
             iret = HandleKeyword_Zonetype( string2 );
             if( iret != 0 ) ierror += 1;
