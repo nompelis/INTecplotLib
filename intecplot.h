@@ -1,5 +1,5 @@
 /******************************************************************************
- Copyright (c) 2017-2019, Ioannis Nompelis
+ Copyright (c) 2017-2020, Ioannis Nompelis
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without any
@@ -70,6 +70,8 @@ class inTec_Zone {
 
    int Dump( const char *file ); 
 
+   int WriteFileSTL( char filename_[], double rdir ) const;
+
    void clear();
 
  protected:
@@ -109,7 +111,7 @@ class inTec_Zone {
    unsigned long icon_cnt;
 
    // various methods that act as helpers
-   int GetElementNodes( unsigned long n, int & no, unsigned long icon_[] );
+   int GetElementNodes( unsigned long n, int & no, unsigned long *icon_ );
 };
 
 

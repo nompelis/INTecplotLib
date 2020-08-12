@@ -1,5 +1,5 @@
 /******************************************************************************
- Copyright (c) 2017-2019, Ioannis Nompelis
+ Copyright (c) 2017-2020, Ioannis Nompelis
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without any
@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <utils.h>
 
@@ -625,7 +626,7 @@ int inTec_Zone::HandleKeyword( char *buf )
       ++i;
    }
 #ifdef _DEBUG_
-   printf(" --- Equal size at character %ld \n", i );
+   printf(" --- Equal sign at character %ld \n", i );
 #endif
    s[i] = '\0';
 #ifdef _DEBUG_
@@ -640,6 +641,7 @@ int inTec_Zone::HandleKeyword( char *buf )
 #endif
 
    // trials to match keyword
+   // (determine size of keyword and do per-size compar.)
    int iret=1;
    if( key_size == 1 ) {
       if( strncasecmp( s, "T", 1 ) == 0 ) {
@@ -708,6 +710,10 @@ int inTec_Zone::HandleKeyword( char *buf )
    }
 
    if( key_size == 8 ) {
+      if( strncasecmp( s, "ELEMENTS", 8 ) == 0 ) {
+         keywords["ELEMENTS"] = p;
+         iret = 0;
+      }
       if( strncasecmp( s, "ZONETYPE", 8 ) == 0 ) {
          keywords["ZONETYPE"] = p;
          iret = 0;
@@ -843,14 +849,11 @@ int inTec_Zone::ManageInternals( void )
 
       }
 
-      if( is == 7 ) {
-         if( strncasecmp( string, "ELEMENTS", 7 ) == 0 ) {
+      if( is == 8 ) {
+         if( strncasecmp( string, "ELEMENTS", 8 ) == 0 ) {
             elems = (unsigned long) atol( string2 );
          }
 
-      }
-
-      if( is == 8 ) {
          if( strncasecmp( string, "ZONETYPE", 8 ) == 0 ) {
             iret = HandleKeyword_Zonetype( string2 );
             if( iret != 0 ) ierror += 1;
@@ -1988,8 +1991,8 @@ int inTec_Zone::WriteFileSTL( char filename_[], double rdir ) const
       return(10);
    }
 
+   // header of STL file
    fprintf( fp, "solid surface\n");
-
 
    // perform the extraction for the particular type of zone
    unsigned long i,j,k,n1,n2,n3,n4;
@@ -2026,14 +2029,6 @@ int inTec_Zone::WriteFileSTL( char filename_[], double rdir ) const
          xn[0] = xn[0]*ss * rdir;
          xn[1] = xn[1]*ss * rdir;
          xn[2] = xn[2]*ss * rdir;
-
-//   facet normal 1.433552e-015 -1.853368e-002 9.998283e-001
-//      outer loop
-//         vertex 7.094394e-001 1.247100e+000 1.216028e+000
-//         vertex 7.094394e-001 1.246683e+000 1.216023e+000
-//         vertex 7.782733e-001 1.246683e+000 1.216023e+000
-//      endloop
-//   endfacet
 
          fprintf( fp, "  facet normal %12.9e %12.9e %12.9e \n",
                   (float) (xn[0]), (float) (xn[1]), (float) (xn[2]) );
@@ -2195,13 +2190,14 @@ int inTec_Zone::WriteFileSTL( char filename_[], double rdir ) const
 
    }
 
-
+   // footer of file
    fprintf( fp, "endsolid\n");
 
    // close file
    fclose( fp );
 
 #ifdef _DEBUG_
+   // write a TecPlot/ParaView file for testing
    fp = fopen( "STLdata.dat","w");
    if( fp == NULL ) return(0);
 
