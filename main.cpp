@@ -19,6 +19,12 @@ int main( int argc, char *argv[] )
    z->Dump( (char*) "CRAPCRAP.dat");//HACK
 
    printf("Zone type: %d \n", z->GetType() );
+   printf("Zone variables: %d \n", z->GetNumVariables() );
+   printf("Zone (not real) im: %ld \n",z->GetNumIndices( 1 ) );
+   printf("Zone (not real) jm: %ld \n",z->GetNumIndices( 2 ) );
+   printf("Zone (not real) km: %ld \n",z->GetNumIndices( 3 ) );
+   printf("Zone nodes: %ld elements: %ld \n",
+             z->GetNumNodes(), z->GetNumElements() );
    const unsigned long* icon = z->GetConnectivityPtr();
    printf(" %ld %ld %ld %ld \n",icon[0],icon[1],icon[2],icon[3]);
 // 41 42 2 1

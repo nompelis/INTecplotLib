@@ -72,9 +72,13 @@ class inTec_Zone {
    int Dump( const char *file ); 
 
    int WriteFileSTL( char filename_[], double rdir ) const;
-   const double* GetVariablePtr( int ivar_ );
-   unsigned long GetNumNodesPerElement();
-   const unsigned long* GetConnectivityPtr();
+   const double* GetVariablePtr( int ivar_ ) const;
+   int GetNumVariables() const;
+   unsigned long GetNumIndices( int idir ) const;
+   unsigned long GetNumNodes() const;
+   unsigned long GetNumElements() const;
+   unsigned long GetNumNodesPerElement() const;
+   const unsigned long* GetConnectivityPtr() const;
 
    void clear();
 

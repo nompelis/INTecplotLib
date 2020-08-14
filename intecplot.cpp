@@ -2467,13 +2467,52 @@ int inTec_Zone::GetElementNodes( unsigned long n,
 
 
 //
+// Getter method to query the number of variables
+//
+
+int inTec_Zone::GetNumVariables() const
+{
+   return num_var;
+}
+
+
+//
+// Three getter methods to return various sizing variables for structured and
+// unstructured datasets.
+//
+
+unsigned long inTec_Zone::GetNumIndices( int idir ) const
+{
+   if( idir == 1 ) {
+      return im;
+   } else if( idir == 2 ) {
+      return jm;
+   } else if( idir == 3 ) {
+      return km;
+   } else {
+      return 0;
+   }
+}
+
+unsigned long inTec_Zone::GetNumNodes() const
+{
+   return nodes;
+}
+
+unsigned long inTec_Zone::GetNumElements() const
+{
+   return elems;
+}
+
+
+//
 // Getter method to return the pointer to the (const) data that is associated
 // with a given variable in this zone. It returns NULL when data is not found
 // for this variable. (It is expected to test the state of the zone and to
 // return null when the object is in the wrong state. TODO!)
 //
 
-const double* inTec_Zone::GetVariablePtr( int ivar_ )
+const double* inTec_Zone::GetVariablePtr( int ivar_ ) const
 {
    if( ivar_ > (int) (var_vec.size()) ) {
       return NULL;
@@ -2491,7 +2530,7 @@ const double* inTec_Zone::GetVariablePtr( int ivar_ )
 // data contained in this zone.)
 //
 
-unsigned long inTec_Zone::GetNumNodesPerElement()
+unsigned long inTec_Zone::GetNumNodesPerElement() const
 {
    return ncon;
 }
@@ -2504,7 +2543,7 @@ unsigned long inTec_Zone::GetNumNodesPerElement()
 // type-casting.
 //
 
-const unsigned long* inTec_Zone::GetConnectivityPtr()
+const unsigned long* inTec_Zone::GetConnectivityPtr() const
 {
    return( (const unsigned long*) icon );
 }
