@@ -59,6 +59,7 @@ class inTec_Zone {
    virtual ~inTec_Zone();
 
    int GetState( void ) const;
+   int GetType( void ) const;     // return value is enum-ed
    long GetPositionInFile( void ) const;
    int NotifyPositionInFile( long ipos_ );
    long GetDataPositionInFile( void ) const;
@@ -71,6 +72,9 @@ class inTec_Zone {
    int Dump( const char *file ); 
 
    int WriteFileSTL( char filename_[], double rdir ) const;
+   const double* GetVariablePtr( int ivar_ );
+   unsigned long GetNumNodesPerElement();
+   const unsigned long* GetConnectivityPtr();
 
    void clear();
 

@@ -146,6 +146,11 @@ int inTec_Zone::GetState() const
    return( istate );
 }
 
+int inTec_Zone::GetType() const
+{
+   return( (int) ietype );
+}
+
 void inTec_Zone::clear()
 {
 #ifdef _DEBUG_
@@ -2458,6 +2463,50 @@ int inTec_Zone::GetElementNodes( unsigned long n,
    }
 
    return(0);
+}
+
+
+//
+// Getter method to return the pointer to the (const) data that is associated
+// with a given variable in this zone. It returns NULL when data is not found
+// for this variable. (It is expected to test the state of the zone and to
+// return null when the object is in the wrong state. TODO!)
+//
+
+const double* inTec_Zone::GetVariablePtr( int ivar_ )
+{
+   if( ivar_ > (int) (var_vec.size()) ) {
+      return NULL;
+   } else {
+      const double* tmp = var_vec[ ivar_ ];
+      return  tmp;
+   }
+}
+
+
+//
+// Getter method to return the number of nodes per elements
+// (Some conventions may be implied, but this is generally so that the data
+// size can be queried for allocating external memory to potentially copy the
+// data contained in this zone.)
+//
+
+unsigned long inTec_Zone::GetNumNodesPerElement()
+{
+   return ncon;
+}
+
+
+//
+// Getter method to return a pointer to (const) connectivity data for an
+// unstructured zone. Notice that the returned pointer is for data that is
+// not supposed to be accessible for alteration (read-only), and hence the
+// type-casting.
+//
+
+const unsigned long* inTec_Zone::GetConnectivityPtr()
+{
+   return( (const unsigned long*) icon );
 }
 
 
