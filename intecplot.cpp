@@ -281,7 +281,7 @@ long inTec_Zone::GetPositionInFile( void ) const
    return( ipos );
 }
 
-int inTec_Zone::SetPositionInFile( long ipos_ )
+int inTec_Zone::NotifyPositionInFile( long ipos_ )
 {
    // reject reseting of position if it is already set
    if( ipos != 0 ) {
@@ -2896,7 +2896,7 @@ int inTec_File::ParseComponent_Zone()
    }
 
    // set the position in the file for this zone
-   int iret = zone->SetPositionInFile( ipos );
+   int iret = zone->NotifyPositionInFile( ipos );
    if( iret != 0 ) {
       printf(" e Error setting zone's position: %ld \n", ipos);
       printf("   This should never happen (zone rejects only when new)\n");

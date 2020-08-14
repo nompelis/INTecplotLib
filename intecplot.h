@@ -60,7 +60,7 @@ class inTec_Zone {
 
    int GetState( void ) const;
    long GetPositionInFile( void ) const;
-   int SetPositionInFile( long ipos_ );
+   int NotifyPositionInFile( long ipos_ );
    long GetDataPositionInFile( void ) const;
    int SetDataPositionInFile( long ipos_data_ );
    int ParseKeywords( char *buf );
