@@ -1933,6 +1933,12 @@ int inTec_Zone::Dump( const char *filename )
 }
 
 
+//
+// This method is meant to write an STL file of a 3D manifold surface grid.
+// (It should disregard all data but the node coefficients {x,y,z} to make the
+// STL file.)
+// WARNING: This method is under construction!
+//
 
 int inTec_Zone::WriteFileSTL( char filename_[], double rdir ) const
 {
