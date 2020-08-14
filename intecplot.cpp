@@ -297,7 +297,7 @@ long inTec_Zone::GetDataPositionInFile( void ) const
    return( ipos_data );
 }
 
-int inTec_Zone::SetDataPositionInFile( long ipos_data_ )
+int inTec_Zone::NotifyDataPositionInFile( long ipos_data_ )
 {
    // reject reseting of position if it is already set
    if( ipos_data != 0 ) {
@@ -3058,7 +3058,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
                --iline;
 
                // set the data position for this zone
-               iret = zone->SetDataPositionInFile( ipos );
+               iret = zone->NotifyDataPositionInFile( ipos );
                // (here we must put the zone in data-reading particular state)
                if( zone->SetState_Reading() != 0 ) {
                   // respond to the possibility of the zone being mis-used...
