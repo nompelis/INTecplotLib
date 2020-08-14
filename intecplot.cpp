@@ -146,6 +146,11 @@ int inTec_Zone::GetState() const
    return( istate );
 }
 
+int inTec_Zone::GetType() const
+{
+   return( (int) ietype );
+}
+
 void inTec_Zone::clear()
 {
 #ifdef _DEBUG_
@@ -281,7 +286,7 @@ long inTec_Zone::GetPositionInFile( void ) const
    return( ipos );
 }
 
-int inTec_Zone::SetPositionInFile( long ipos_ )
+int inTec_Zone::NotifyPositionInFile( long ipos_ )
 {
    // reject reseting of position if it is already set
    if( ipos != 0 ) {
@@ -297,7 +302,7 @@ long inTec_Zone::GetDataPositionInFile( void ) const
    return( ipos_data );
 }
 
-int inTec_Zone::SetDataPositionInFile( long ipos_data_ )
+int inTec_Zone::NotifyDataPositionInFile( long ipos_data_ )
 {
    // reject reseting of position if it is already set
    if( ipos_data != 0 ) {
@@ -1933,6 +1938,12 @@ int inTec_Zone::Dump( const char *filename )
 }
 
 
+//
+// This method is meant to write an STL file of a 3D manifold surface grid.
+// (It should disregard all data but the node coefficients {x,y,z} to make the
+// STL file.)
+// WARNING: This method is under construction!
+//
 
 int inTec_Zone::WriteFileSTL( char filename_[], double rdir ) const
 {
@@ -2456,6 +2467,89 @@ int inTec_Zone::GetElementNodes( unsigned long n,
 
 
 //
+// Getter method to query the number of variables
+//
+
+int inTec_Zone::GetNumVariables() const
+{
+   return num_var;
+}
+
+
+//
+// Three getter methods to return various sizing variables for structured and
+// unstructured datasets.
+//
+
+unsigned long inTec_Zone::GetNumIndices( int idir ) const
+{
+   if( idir == 1 ) {
+      return im;
+   } else if( idir == 2 ) {
+      return jm;
+   } else if( idir == 3 ) {
+      return km;
+   } else {
+      return 0;
+   }
+}
+
+unsigned long inTec_Zone::GetNumNodes() const
+{
+   return nodes;
+}
+
+unsigned long inTec_Zone::GetNumElements() const
+{
+   return elems;
+}
+
+
+//
+// Getter method to return the pointer to the (const) data that is associated
+// with a given variable in this zone. It returns NULL when data is not found
+// for this variable. (It is expected to test the state of the zone and to
+// return null when the object is in the wrong state. TODO!)
+//
+
+const double* inTec_Zone::GetVariablePtr( int ivar_ ) const
+{
+   if( ivar_ > (int) (var_vec.size()) ) {
+      return NULL;
+   } else {
+      const double* tmp = var_vec[ ivar_ ];
+      return  tmp;
+   }
+}
+
+
+//
+// Getter method to return the number of nodes per elements
+// (Some conventions may be implied, but this is generally so that the data
+// size can be queried for allocating external memory to potentially copy the
+// data contained in this zone.)
+//
+
+unsigned long inTec_Zone::GetNumNodesPerElement() const
+{
+   return ncon;
+}
+
+
+//
+// Getter method to return a pointer to (const) connectivity data for an
+// unstructured zone. Notice that the returned pointer is for data that is
+// not supposed to be accessible for alteration (read-only), and hence the
+// type-casting.
+//
+
+const unsigned long* inTec_Zone::GetConnectivityPtr() const
+{
+   return( (const unsigned long*) icon );
+}
+
+
+//
 // the file object methods
 //
 
@@ -2896,7 +2990,7 @@ int inTec_File::ParseComponent_Zone()
    }
 
    // set the position in the file for this zone
-   int iret = zone->SetPositionInFile( ipos );
+   int iret = zone->NotifyPositionInFile( ipos );
    if( iret != 0 ) {
       printf(" e Error setting zone's position: %ld \n", ipos);
       printf("   This should never happen (zone rejects only when new)\n");
@@ -3058,7 +3152,7 @@ printf("FOUND iret=%d idone_zone=%d \n", iret,idone_zone);
                --iline;
 
                // set the data position for this zone
-               iret = zone->SetDataPositionInFile( ipos );
+               iret = zone->NotifyDataPositionInFile( ipos );
                // (here we must put the zone in data-reading particular state)
                if( zone->SetState_Reading() != 0 ) {
                   // respond to the possibility of the zone being mis-used...

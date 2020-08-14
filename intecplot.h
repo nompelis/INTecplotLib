@@ -59,10 +59,11 @@ class inTec_Zone {
    virtual ~inTec_Zone();
 
    int GetState( void ) const;
+   int GetType( void ) const;     // return value is enum-ed
    long GetPositionInFile( void ) const;
-   int SetPositionInFile( long ipos_ );
+   int NotifyPositionInFile( long ipos_ );
    long GetDataPositionInFile( void ) const;
-   int SetDataPositionInFile( long ipos_data_ );
+   int NotifyDataPositionInFile( long ipos_data_ );
    int ParseKeywords( char *buf );
    int HandleKeyword( char *buf );
    int SetState_Reading( void );
@@ -71,6 +72,13 @@ class inTec_Zone {
    int Dump( const char *file ); 
 
    int WriteFileSTL( char filename_[], double rdir ) const;
+   const double* GetVariablePtr( int ivar_ ) const;
+   int GetNumVariables() const;
+   unsigned long GetNumIndices( int idir ) const;
+   unsigned long GetNumNodes() const;
+   unsigned long GetNumElements() const;
+   unsigned long GetNumNodesPerElement() const;
+   const unsigned long* GetConnectivityPtr() const;
 
    void clear();
 
